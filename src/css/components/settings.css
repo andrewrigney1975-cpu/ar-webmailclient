@@ -6,7 +6,7 @@
 }
 
 .settings__heading {
-  margin: var(--space-2) 0 var(--space-3);
+  margin: var(--space-6) 0 var(--space-3);
   font-size: var(--text-sm);
   font-weight: 500;
   color: var(--accent-text);
@@ -16,8 +16,6 @@
   list-style: none;
   margin: 0 0 var(--space-4);
   padding: 0;
-  display: grid;
-  gap: var(--space-2);
 }
 
 .account-card {
@@ -198,4 +196,36 @@
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--on-surface);
+}
+
+/*
+ * Grouped settings (Android 16 style): rows in a group sit 2px apart with small
+ * inner corners; only the group's outer corners are fully rounded.
+ */
+.settings-group,
+.account-list {
+  display: grid;
+  gap: 2px;
+}
+
+.settings-group > *,
+.account-list > * {
+  border-radius: var(--radius-inner);
+}
+
+.settings-group > :first-child,
+.account-list > :first-child {
+  border-top-left-radius: var(--radius-group);
+  border-top-right-radius: var(--radius-group);
+}
+
+.settings-group > :last-child,
+.account-list > :last-child {
+  border-bottom-left-radius: var(--radius-group);
+  border-bottom-right-radius: var(--radius-group);
+}
+
+/* The first section heading sits close to the app bar. */
+.settings > .settings__heading:first-child {
+  margin-top: var(--space-2);
 }

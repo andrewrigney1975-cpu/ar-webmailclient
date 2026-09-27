@@ -52,6 +52,7 @@ export function createAccountSettingsView({ element, db, store, mail, snackbar, 
             <textarea name="signature" rows="4">${a.signature ?? ''}</textarea>
           </label>
 
+          <div class="settings-group">
           <label class="switch-row">
             <span>
               <span class="switch-row__label">Notify me about new mail</span>
@@ -59,6 +60,7 @@ export function createAccountSettingsView({ element, db, store, mail, snackbar, 
             </span>
             <input class="switch" type="checkbox" role="switch" name="notify" ${a.notify ? 'checked' : ''} />
           </label>
+          </div>
 
           <h2 class="settings__heading">Accent colour</h2>
           <div class="swatches" role="group" aria-label="Accent colour">${swatches(a.accentColor)}</div>

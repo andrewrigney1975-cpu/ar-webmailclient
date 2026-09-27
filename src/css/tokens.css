@@ -43,6 +43,8 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 28px;
+  --radius-group: 20px;
+  --radius-inner: 4px;
   --app-bar-height: 64px;
   --touch-target: 48px;
   --ease: cubic-bezier(0.2, 0, 0, 1);

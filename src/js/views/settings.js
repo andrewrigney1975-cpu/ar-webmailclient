@@ -57,6 +57,7 @@ export function renderSettings(element, { accounts, sync, confirmRemoveId, setti
         </p>
 
         <h2 class="settings__heading">Notifications</h2>
+        <div class="settings-group">
         <div class="switch-row">
           <span>
             <span class="switch-row__label">New mail notifications: ${notificationSummary(notificationStatus)}</span>
@@ -87,8 +88,10 @@ export function renderSettings(element, { accounts, sync, confirmRemoveId, setti
           <input class="switch" type="checkbox" role="switch" data-action="toggle-setting" data-setting="instantNotifications"
             ${settings.instantNotifications ? 'checked' : ''} />
         </label>
+        </div>
 
         <h2 class="settings__heading">Reading</h2>
+        <div class="settings-group">
         <label class="switch-row">
           <span>
             <span class="switch-row__label">Group into conversations</span>
@@ -105,6 +108,7 @@ export function renderSettings(element, { accounts, sync, confirmRemoveId, setti
           <input class="switch" type="checkbox" role="switch" data-action="toggle-setting" data-setting="darkMessages"
             ${settings.darkMessages ? 'checked' : ''} />
         </label>
+        </div>
       </div>
     `,
   );
