@@ -16,12 +16,16 @@ const SORTS = {
 // Messages cached before threading ran have no thread ID yet; each is its own conversation.
 const THREAD_KEY = "COALESCE(m.thread_id, 'm:' || m.id)";
 
-/** `attachments`: 'any' (default), 'with' or 'without' — judged per message in scope. */
-function scope({ folderId = null, unified = false, attachments = 'any' }) {
-  const filter = attachments === 'with' ? ' AND m.has_attachments = 1' : attachments === 'without' ? ' AND m.has_attachments = 0' : '';
+/**
+ * WHERE clause for messages in scope, for table alias `alias`.
+ * `attachments`: 'any' (default), 'with' or 'without' — judged per message in scope.
+ */
+function scope({ folderId = null, unified = false, attachments = 'any' }, alias = 'm') {
+  const filter =
+    attachments === 'with' ? ` AND ${alias}.has_attachments = 1` : attachments === 'without' ? ` AND ${alias}.has_attachments = 0` : '';
   return unified
-    ? { where: `m.folder_id IN (SELECT id FROM folders WHERE role = 'inbox')${filter}`, params: [] }
-    : { where: `m.folder_id = ?${filter}`, params: [folderId] };
+    ? { where: `${alias}.folder_id IN (SELECT id FROM folders WHERE role = 'inbox')${filter}`, params: [] }
+    : { where: `${alias}.folder_id = ?${filter}`, params: [folderId] };
 }
 
 async function hiddenFolderIds(db, query) {
@@ -45,21 +49,27 @@ export async function listThreads(
   db,
   { folderId = null, unified = false, attachments = 'any', sort = 'dateReceived', descending = true, limit = 50, offset = 0 } = {},
 ) {
-  const { where, params } = scope({ folderId, unified, attachments });
+  const query = { folderId, unified, attachments };
+  const { where, params } = scope(query, 'm');
+  const newer = scope(query, 'n');
   const order = SORTS[sort] ?? SORTS.dateReceived;
   const direction = descending ? 'DESC' : 'ASC';
+  // Each conversation is represented by its newest message in scope: the one
+  // with no newer message in the same thread. This walks the date index and
+  // stops after a page, unlike a window function over the whole folder.
   const rows = await db.all(
     `SELECT m.id, m.account_id, m.folder_id, m.uid, m.thread_id, m.subject, m.from_name, m.from_addr, m.to_json,
-            m.date_sent, m.date_received, m.size, m.snippet, m.thread_key
-     FROM (
-       SELECT m.*, ${THREAD_KEY} AS thread_key,
-              ROW_NUMBER() OVER (PARTITION BY ${THREAD_KEY} ORDER BY m.date_received DESC, m.id DESC) AS rn
-       FROM messages m WHERE ${where}
-     ) m
-     WHERE m.rn = 1
+            m.date_sent, m.date_received, m.size, m.snippet, ${THREAD_KEY} AS thread_key
+     FROM messages m
+     WHERE ${where}
+       AND NOT EXISTS (
+         SELECT 1 FROM messages n
+         WHERE ${newer.where} AND n.thread_id = m.thread_id
+           AND (n.date_received > m.date_received OR (n.date_received = m.date_received AND n.id > m.id))
+       )
      ORDER BY ${order} ${direction}, m.id ${direction}
      LIMIT ? OFFSET ?`,
-    [...params, limit, offset],
+    [...params, ...newer.params, limit, offset],
   );
   if (rows.length === 0) return [];
 

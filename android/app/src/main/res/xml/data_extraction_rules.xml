@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup and device transfer (PLAN.md §5): only app preferences (Capacitor
+  Preferences: threading, sort order, notification settings). Mail, the
+  encrypted database, stored passwords and background-sync state are left
+  out; accounts are added again on a new device.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="sharedpref" path="CapacitorStorage.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="sharedpref" path="CapacitorStorage.xml" />
+    </device-transfer>
+</data-extraction-rules>

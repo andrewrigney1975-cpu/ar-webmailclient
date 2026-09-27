@@ -267,6 +267,21 @@ Building milestones 3–5 with the pane structure in mind (a single DOM tree wit
 
 ---
 
+### Status (27 September 2026)
+
+| # | Milestone | Status |
+|---|---|---|
+| 0–4 | Scaffold, mail plugin, accounts and sync, reading, threading | Done; used on a Pixel 10a |
+| 5 | Compose | Done; not yet tried on a device |
+| 6 | Search and sort | Done, using FTS4 rather than FTS5 (the browser build's sql.js only has FTS4); not yet tried on a device |
+| 7 | Theme and accents | Done; not yet tried on a device |
+| 8 | Notifications | Done; not yet tried on a device (background timing, IDLE and notification actions need real-device testing) |
+| 9 | Date detection and ICS | Done; not yet tried on a device |
+| 10 | Adaptive layout | Done; fold alignment tested with simulated hinge events only |
+| 11 | Hardening and release | Done except: a release signing key (to be created by the owner), R8 minification (left off until tested on a device), and TalkBack testing on a device |
+
+---
+
 ## 7. Testing strategy
 - **Unit tests (Vitest):**
   - threading (JWZ edge cases: missing parents, subject-only threads)

@@ -2,7 +2,25 @@
 
 A native Android IMAP email client built with HTML5, CSS3 and vanilla JavaScript, packaged with [Capacitor](https://capacitorjs.com/). Requires Android 16 (API 36) or later.
 
-See [PLAN.md](PLAN.md) for the full implementation plan and milestones.
+See [PLAN.md](PLAN.md) for the implementation plan and milestone status, and [store/listing.md](store/listing.md) for the Play Store listing.
+
+## Features (1.0)
+
+- **Accounts:** any number of IMAP accounts, with settings found automatically and guidance for app passwords. Each account has its own accent colour and signature.
+- **Mail:**
+  - Unified Inbox and every folder, cached in an encrypted database (SQLCipher) with incremental sync.
+  - Conversations that span folders, with quoted history folded.
+  - HTML mail in a sandboxed frame with remote images blocked until allowed.
+  - Attachments you can open or share.
+- **Actions:** swipe, multi-select and toolbar actions (archive, delete, move, read, flag) with Undo.
+- **Compose:**
+  - Reply, reply all and forward, with address autocomplete.
+  - Drafts saved to the server.
+  - An outbox with a 5-second Undo that also works offline.
+- **Search:** full-text search with operators (`from:`, `has:attachment`, `is:unread`, `before:` …), a server-side search fallback, and per-folder sort and attachment filters.
+- **Notifications:** background checks with WorkManager, per-account channels, and Mark read, Archive and Reply actions. An optional instant mode keeps an IMAP IDLE connection open.
+- **Calendar:** dates in emails (deadlines, meetings) offered as `.ics` events, to open in the calendar app, save or share.
+- **Layout:** one pane on phones and two or three on tablets and foldables, with a resizable divider, split along the hinge, and keyboard shortcuts.
 
 ## Requirements
 
@@ -13,10 +31,15 @@ See [PLAN.md](PLAN.md) for the full implementation plan and milestones.
 
 ```sh
 npm install
-npm run dev      # web build at http://localhost:5173 (Escape stands in for Android back)
-npm test         # JS unit tests (Vitest)
-npm run lint     # ESLint
+npm run dev              # browser build at http://localhost:5173 (Escape stands in for Android back)
+npm run dev -- --port 5195
+# http://localhost:5195/?demo   sample account and mail (development builds only)
+npm test                 # JS unit tests (Vitest)
+PERF=1 npx vitest run tests/perf.test.js   # 50,000-message performance check
+npm run lint             # ESLint
 ```
+
+In the browser, `src/js/mail/web-mail.js` stands in for the mail server with an in-memory mailbox; the password `wrong` is always rejected. Development builds expose `window.despatch` (`db`, `store`, `mail`, `router` …) in the console.
 
 ## Android
 
@@ -25,56 +48,65 @@ npm run sync           # build the web app and copy it into android/
 npm run android:open   # open the project in Android Studio
 ```
 
-To build a debug APK from the command line, point `JAVA_HOME` at Android Studio's JDK first. Some Capacitor plugins build with a JDK 21 toolchain: Gradle downloads one if needed (foojay resolver in `settings.gradle`), or you can point it at a local JDK 21:
+From the command line, point `JAVA_HOME` at Android Studio's JDK. Some Capacitor plugins build with a JDK 21 toolchain: Gradle downloads one if needed (foojay resolver in `settings.gradle`), or you can point it at a local JDK 21:
 
 ```sh
 export JAVA_HOME="/f/Program Files/Android/Android Studio/jbr"
-cd android && ./gradlew assembleDebug "-Porg.gradle.java.installations.paths=C:/Program Files/Android/openjdk/jdk-21.0.8"
+cd android
+./gradlew assembleDebug testDebugUnitTest "-Porg.gradle.java.installations.paths=C:/Program Files/Android/openjdk/jdk-21.0.8"
 ```
 
-Native unit tests run the IMAP/SMTP code against an in-process [GreenMail](https://greenmail-mail-test.github.io/greenmail/) server:
+Native unit tests run the IMAP/SMTP code against an in-process [GreenMail](https://greenmail-mail-test.github.io/greenmail/) server.
+
+### Release build
+
+Release builds are signed with the key described in `android/keystore.properties` (gitignored); without it they're built unsigned. To set up a key once, and keep a backup of both files:
 
 ```sh
-cd android && ./gradlew testDebugUnitTest
+keytool -genkeypair -v -keystore ~/.keystores/despatch-release.jks -alias despatch -keyalg RSA -keysize 4096 -validity 10000
 ```
 
-## Mail plugin
-
-IMAP and SMTP need raw sockets, which a WebView can't open, so they live in a small Kotlin plugin, `DespatchMail` (`android/app/src/main/java/com/despatch/mobile/mail/`), built on [Angus Mail](https://eclipse-ee4j.github.io/angus-mail/). JS calls it through `src/js/mail/bridge.js`:
-
-```js
-import { mail } from './mail/bridge.js';
-
-await mail.testConnection(account, { password });  // before saving
-await mail.setCredentials(account.id, password);     // encrypted with an Android Keystore key
-const folders = await mail.listFolders(account);
-const latest = await mail.fetchEnvelopes(account, 'INBOX', { latest: 50 });
+```properties
+# android/keystore.properties: never commit this
+storeFile=C:/Users/<you>/.keystores/despatch-release.jks
+storePassword=…
+keyAlias=despatch
+keyPassword=…
 ```
 
-Passwords go in through `setCredentials` and are never returned to JS. Errors reject with a `MailError` whose `code` is one of `MailErrorCode` (for example `APP_PASSWORD_REQUIRED`). In a browser, `src/js/mail/web-mail.js` provides an in-memory mailbox with sample messages; the password `wrong` is always rejected.
+Then build the App Bundle for Play (`android/app/build/outputs/bundle/release/app-release.aab`):
 
-## Accounts, storage and sync
+```sh
+npm run sync && cd android && ./gradlew bundleRelease
+```
 
-- **Setup** (`src/js/accounts/setup.js`): known providers (Gmail, iCloud, Yahoo, AOL, Fastmail, Zoho) are configured without any lookup, and the wizard explains their app passwords. Other domains use the domain's own autoconfig, then Mozilla's ISPDB, then MX records (DNS over HTTPS), then a guess the user can edit. The password is saved only after a connection test succeeds. Outlook.com and Microsoft 365 are refused with a note that they arrive in v2.0.
-- **Database** (`src/js/db/`): SQLite, encrypted with SQLCipher on Android (the passphrase is generated once and held by the plugin in Android's encrypted storage). The browser build uses sql.js persisted to IndexedDB, unencrypted, for development only. Schema changes go in `migrations.js` as new versions.
-- **Sync** (`src/js/mail/sync.js`, `sync-manager.js`): Inbox and Sent sync on start, on resume, when the network returns and every 5 minutes while open. Other folders sync when opened. Each sync fetches only new UIDs, refreshes flags, removes expunged messages, handles UIDVALIDITY resets, and skips unchanged folders with CONDSTORE.
+Store artwork and screenshots are generated by `node scripts/screenshots.mjs` (with the dev server running on port 5195).
 
-In development builds, `window.despatch` exposes `{ db, store, mail, syncManager }` for the console.
+## How it fits together
 
-Bridge logging is off (`loggingBehavior: "none"` in `capacitor.config.json`) because Capacitor would otherwise write plugin arguments, including passwords, to logcat in debug builds.
+- **Mail plugin** (`android/app/src/main/java/com/despatch/mobile/mail/`): IMAP and SMTP need raw sockets, which a WebView can't open, so they live in a Kotlin Capacitor plugin built on [Angus Mail](https://eclipse-ee4j.github.io/angus-mail/). JS calls it through `src/js/mail/bridge.js`.
+  - Passwords go in through `setCredentials`, are stored encrypted with an Android Keystore key, and are never returned to JS.
+  - Errors reject with a `MailError` whose `code` is one of `MailErrorCode`.
+  - TLS completes certificate chains that servers send incomplete, the way desktop systems do (`AiaTrustManager`).
+- **Background** (`android/.../notify/`): SyncWorker (WorkManager), PushService (IMAP IDLE foreground service, `remoteMessaging`) and MailNotifier. They track only the last notified UID per account, and never open the app's database.
+- **Database** (`src/js/db/`): SQLite through one interface, SQLCipher on Android (via `@capacitor-community/sqlite`) and sql.js in the browser and tests. Schema changes go in `migrations.js` as new versions.
+- **Sync** (`src/js/mail/sync.js`): new UIDs only, flag refresh, expunge detection, UIDVALIDITY resets, and a CONDSTORE shortcut. Threading (`threading.js`) runs in the same transaction.
+- **Privacy:**
+  - Capacitor bridge logging is off (`loggingBehavior: "none"`), because debug builds would otherwise write plugin arguments, including passwords, to logcat.
+  - Backups include only app preferences (`res/xml/data_extraction_rules.xml`).
+  - See [docs/privacy-policy.md](docs/privacy-policy.md).
 
 ## Project layout
 
 | Path | Contents |
 |---|---|
-| `src/index.html` | App shell: drawer, list pane, reading pane, full-screen page |
+| `src/index.html` | App shell: drawer, list pane, reading pane, pages |
 | `src/css/` | Design tokens (system light/dark via `light-dark()`, per-account `--accent`), layout, components |
-| `src/js/router.js` | Hash router that knows about panes, with deterministic back navigation |
-| `src/js/layout.js` | Window width classes (compact / medium / expanded / large) |
-| `src/js/theme/` | Accent colour and contrast handling |
+| `src/js/router.js`, `layout.js`, `shortcuts.js` | Pane-aware routing, width classes and fold handling, keyboard shortcuts |
 | `src/js/views/` | Views and custom elements |
-| `src/js/mail/` | Mail plugin bridge, in-memory web implementation, discovery, sync |
+| `src/js/mail/` | Plugin bridge, in-memory web implementation, discovery, sync, threading, actions, outbox |
 | `src/js/db/` | Database drivers, migrations and repositories |
-| `src/js/accounts/` | Add-account flow |
+| `src/js/search/`, `compose/`, `calendar/`, `notify/`, `accounts/` | Search, compose, date detection and `.ics`, notifications, account setup |
 | `android/` | Capacitor Android project (minSdk and targetSdk 36) |
 | `tests/` | Vitest unit tests |
+| `store/`, `docs/`, `scripts/` | Play Store assets and listing, privacy policy, screenshot script |

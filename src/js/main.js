@@ -77,6 +77,15 @@ function showError(error) {
   snackbar.show(error?.message ?? 'Something went wrong.');
 }
 
+// Anything that slips past a handler still gets a message rather than failing silently.
+window.addEventListener('unhandledrejection', (event) => {
+  console.error(event.reason);
+  showError(event.reason);
+});
+window.addEventListener('error', (event) => {
+  console.error(event.error ?? event.message);
+});
+
 // --- Dialogs shared by the list and the reading pane -------------------------------------------
 
 const ROLE_ICONS = { inbox: 'inbox', sent: 'send', drafts: 'draft', trash: 'delete', archive: 'archive', junk: 'report' };
@@ -439,7 +448,22 @@ await initPlatform({
     outbox.process();
   },
 });
+// Development only: "?demo" fills the browser build with sample mail (store screenshots).
+if (import.meta.env.DEV && new URLSearchParams(location.search).has('demo')) {
+  for (const account of store.get().accounts) await mail.setCredentials(account.id, 'demo');
+  if (store.get().accounts.length === 0) {
+    await addAccount(
+      { email: 'alex@fastmail.com', displayName: 'Alex Morgan', password: 'demo' },
+      { db, mail, discover: (email) => discover(email, { http: async () => ({ status: 404, text: '' }) }), existingAccounts: [] },
+    );
+    await loadAccounts();
+  }
+}
 syncManager.start();
+if (import.meta.env.DEV && new URLSearchParams(location.search).has('open')) {
+  // Screenshots: open the first conversation once the demo mailbox has synced.
+  syncManager.syncAll().then(() => setTimeout(() => mailboxView.openAdjacent(1), 300));
+}
 await outbox.refresh();
 outbox.process();
 await notifications.start();

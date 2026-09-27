@@ -329,3 +329,39 @@
 .event-editor__actions {
   flex-wrap: wrap;
 }
+
+/* Card header and summary: explicit areas, so the avatar stays on the left and the name gets the space. */
+.card__header {
+  grid-template-areas: 'avatar who date';
+  align-items: start;
+}
+
+.card__summary {
+  grid-template-areas:
+    'avatar from date'
+    'avatar snippet snippet';
+}
+
+.card__header > .message-row__avatar,
+.card__summary > .message-row__avatar {
+  grid-area: avatar;
+  grid-row: auto;
+}
+
+.card__header > .card__who {
+  grid-area: who;
+}
+
+.card__header > .card__date,
+.card__summary > .card__date {
+  grid-area: date;
+}
+
+.card__summary > .card__from {
+  grid-area: from;
+}
+
+.card__summary > .card__snippet {
+  grid-area: snippet;
+  grid-column: auto;
+}

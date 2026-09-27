@@ -1,6 +1,6 @@
 {
   "name": "despatch-mobile",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Despatch Mobile: a native Android IMAP email client built with vanilla web technologies and Capacitor.",
   "type": "module",
@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "sync": "npm run build && cap sync android",
     "android:debug": "npm run sync && cd android && ./gradlew assembleDebug",
-    "android:open": "cap open android"
+    "android:open": "cap open android",
+    "screenshots": "node scripts/screenshots.mjs http://localhost:5195"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^8.1.1",

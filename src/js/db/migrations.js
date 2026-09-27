@@ -193,6 +193,13 @@ export const MIGRATIONS = [
       );
     `,
   },
+  {
+    version: 7,
+    sql: `
+      -- Conversation lists find each thread's newest message with this (repo-threads.js).
+      CREATE INDEX messages_folder_thread_received ON messages (folder_id, thread_id, date_received);
+    `,
+  },
 ];
 
 export async function migrate(db, migrations = MIGRATIONS) {
