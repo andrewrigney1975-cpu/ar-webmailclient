@@ -55,16 +55,29 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             }
         }
 
+        /**
+         * Schedules the periodic check. The app calls this on every start, so an
+         * existing schedule is kept (replacing it would restart the countdown each
+         * time the app opens); it's only replaced when the interval changes.
+         */
         fun schedule(context: Context, intervalMinutes: Int) {
-            val request = PeriodicWorkRequestBuilder<SyncWorker>(intervalMinutes.coerceAtLeast(15).toLong(), TimeUnit.MINUTES)
+            val minutes = intervalMinutes.coerceAtLeast(15)
+            val store = BackgroundStore(context)
+            val policy = if (store.scheduledIntervalMinutes == minutes) {
+                ExistingPeriodicWorkPolicy.KEEP
+            } else {
+                ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE
+            }
+            val request = PeriodicWorkRequestBuilder<SyncWorker>(minutes.toLong(), TimeUnit.MINUTES)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .build()
-            WorkManager.getInstance(context)
-                .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(WORK_NAME, policy, request)
+            store.scheduledIntervalMinutes = minutes
         }
 
         fun cancel(context: Context) {
             WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+            BackgroundStore(context).scheduledIntervalMinutes = 0
         }
     }
 }

@@ -33,6 +33,11 @@ class BackgroundStore(context: Context) : NewMailChecker.State {
         get() = prefs.getInt("intervalMinutes", 15)
         set(value) = prefs.edit().putInt("intervalMinutes", value).apply()
 
+    /** The interval the periodic check is currently scheduled with (0 = not scheduled). */
+    var scheduledIntervalMinutes: Int
+        get() = prefs.getInt("scheduledIntervalMinutes", 0)
+        set(value) = prefs.edit().putInt("scheduledIntervalMinutes", value).apply()
+
     var push: Boolean
         get() = prefs.getBoolean("push", false)
         set(value) = prefs.edit().putBoolean("push", value).apply()
