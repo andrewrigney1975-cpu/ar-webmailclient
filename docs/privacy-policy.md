@@ -1,8 +1,8 @@
-# Despatch Mobile: privacy policy
+# Dispatch Mobile: privacy policy
 
 _Last updated: 27 September 2026_
 
-Despatch Mobile is an email app. It connects to the email accounts you add and to nothing else run by us: there is no Despatch server, no analytics, no advertising and no account to create with us.
+Dispatch Mobile is an email app. It connects to the email accounts you add and to nothing else run by us: there is no Dispatch server, no analytics, no advertising and no account to create with us.
 
 ## What the app stores, and where
 
@@ -36,7 +36,7 @@ Removing an account in Settings deletes its mail, settings and password from the
 
 ## Children
 
-Despatch Mobile is a general-purpose email app and isn't directed at children.
+Dispatch Mobile is a general-purpose email app and isn't directed at children.
 
 ## Changes and contact
 

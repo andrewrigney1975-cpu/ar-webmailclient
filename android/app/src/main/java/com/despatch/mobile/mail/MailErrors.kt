@@ -66,7 +66,7 @@ object MailErrors {
             chain.any { it is AuthenticationFailedException } || looksLikeAuthFailure(text) -> when {
                 basicAuthDisabledHints.any(text::contains) -> MailException(
                     MailErrorCode.BASIC_AUTH_DISABLED,
-                    "This provider has password sign-in turned off. Support for it is planned for Despatch Mobile 2.0.",
+                    "This provider has password sign-in turned off. Support for it is planned for Dispatch Mobile 2.0.",
                     error,
                 )
                 appPasswordHints.any(text::contains) -> MailException(

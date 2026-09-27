@@ -69,7 +69,7 @@ function alarmTrigger(minutes, allDay) {
 /**
  * @param {object} event  { uid, title, start, end, allDay, description, location, reminderMinutes }
  */
-export function buildIcs(event, { now = Date.now(), productId = '-//Despatch Mobile//EN' } = {}) {
+export function buildIcs(event, { now = Date.now(), productId = '-//Dispatch Mobile//EN' } = {}) {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:${productId}`, 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT'];
   lines.push(`UID:${event.uid}`);
   lines.push(`DTSTAMP:${utcStamp(now)}`);

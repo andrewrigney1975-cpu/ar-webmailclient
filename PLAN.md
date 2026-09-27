@@ -1,4 +1,4 @@
-# Despatch Mobile — Implementation Plan
+# Dispatch Mobile — Implementation Plan
 
 A native Android email client built with HTML5, CSS3 and vanilla JavaScript (ES modules, no framework), packaged with Capacitor.
 
@@ -72,7 +72,7 @@ Trade-off: at launch, Android 16 is installed on a minority of active devices, s
 ```
 despatch-mobile/
 ├─ package.json            # capacitor deps, vite (dev server + bundling only, no framework)
-├─ capacitor.config.json   # appId: com.despatch.mobile, appName: "Despatch Mobile"
+├─ capacitor.config.json   # appId: com.despatch.mobile, appName: "Dispatch"
 ├─ src/
 │  ├─ index.html
 │  ├─ css/

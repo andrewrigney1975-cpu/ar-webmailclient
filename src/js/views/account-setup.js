@@ -31,7 +31,7 @@ function providerHint(provider) {
   if (provider.unsupportedUntil) {
     return html`<div class="banner banner--warning">
       ${icon('error')}
-      <p>${provider.name} accounts can’t be added yet. Support is planned for Despatch Mobile ${provider.unsupportedUntil}.</p>
+      <p>${provider.name} accounts can’t be added yet. Support is planned for Dispatch Mobile ${provider.unsupportedUntil}.</p>
     </div>`;
   }
   if (!provider.appPassword) return '';
@@ -120,7 +120,7 @@ export function createAccountSetupView({ element, onSubmit, onOpenUrl, onDone })
           <h1 class="app-bar__title">Add account</h1>
         </header>
         <form class="pane__body setup" novalidate>
-          <p class="setup__intro">Despatch Mobile works with any IMAP email account.</p>
+          <p class="setup__intro">Dispatch Mobile works with any IMAP email account.</p>
           <label class="field">
             <span>Email address</span>
             <input name="email" type="email" value="${state.email}" autocomplete="email" autocapitalize="off" required />

@@ -1,7 +1,7 @@
 import { render } from '../../html.js';
 
 /**
- * Base class for Despatch custom elements. Uses light DOM so the shared
+ * Base class for Dispatch custom elements. Uses light DOM so the shared
  * stylesheets apply. Subclasses implement `template()` and call `update()`
  * whenever their state changes; observed attributes re-render automatically.
  */

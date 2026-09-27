@@ -79,7 +79,7 @@ describe('addAccount', () => {
 
     const error = await setupError(addAccount({ email: 'me@outlook.com', password: 'pw' }, deps));
     expect(error.code).toBe(MailErrorCode.BASIC_AUTH_DISABLED);
-    expect(describeSetupError(error).message).toMatch(/Despatch Mobile 2\.0/);
+    expect(describeSetupError(error).message).toMatch(/Dispatch Mobile 2\.0/);
   });
 
   it('rejects invalid and duplicate addresses', async () => {

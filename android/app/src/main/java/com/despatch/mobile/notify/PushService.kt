@@ -83,7 +83,7 @@ class PushService : Service() {
     private fun ongoingNotification() = NotificationCompat.Builder(this, ensureServiceChannel())
         .setSmallIcon(R.drawable.ic_stat_mail)
         .setContentTitle("Instant notifications are on")
-        .setContentText("Despatch Mobile is keeping a connection open for new mail.")
+        .setContentText("Dispatch Mobile is keeping a connection open for new mail.")
         .setOngoing(true)
         .setPriority(NotificationCompat.PRIORITY_MIN)
         .setContentIntent(
@@ -98,7 +98,7 @@ class PushService : Service() {
 
     private fun ensureServiceChannel(): String {
         val channel = NotificationChannel(SERVICE_CHANNEL, "Instant notifications", NotificationManager.IMPORTANCE_MIN).apply {
-            description = "Shown while Despatch Mobile keeps a connection open for instant notifications."
+            description = "Shown while Dispatch Mobile keeps a connection open for instant notifications."
         }
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         return SERVICE_CHANNEL

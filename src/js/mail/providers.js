@@ -14,7 +14,7 @@ export const PROVIDERS = [
     smtp: { host: 'smtp.gmail.com', port: 465, security: 'tls' },
     appPassword: {
       url: 'https://myaccount.google.com/apppasswords',
-      steps: 'Turn on 2-Step Verification for your Google account, then create an app password named "Despatch Mobile".',
+      steps: 'Turn on 2-Step Verification for your Google account, then create an app password named "Dispatch Mobile".',
     },
     // Gmail saves sent mail itself; appending a copy would duplicate it.
     savesSentMail: true,
@@ -28,7 +28,7 @@ export const PROVIDERS = [
     smtp: { host: 'smtp.mail.me.com', port: 587, security: 'starttls' },
     appPassword: {
       url: 'https://account.apple.com/account/manage',
-      steps: 'Under Sign-In and Security, choose App-Specific Passwords and create one for "Despatch Mobile".',
+      steps: 'Under Sign-In and Security, choose App-Specific Passwords and create one for "Dispatch Mobile".',
     },
   },
   {
@@ -40,7 +40,7 @@ export const PROVIDERS = [
     smtp: { host: 'smtp.mail.yahoo.com', port: 465, security: 'tls' },
     appPassword: {
       url: 'https://login.yahoo.com/account/security',
-      steps: 'Open Account Security, choose Generate app password, and create one for "Despatch Mobile".',
+      steps: 'Open Account Security, choose Generate app password, and create one for "Dispatch Mobile".',
     },
   },
   {
@@ -52,7 +52,7 @@ export const PROVIDERS = [
     smtp: { host: 'smtp.aol.com', port: 465, security: 'tls' },
     appPassword: {
       url: 'https://login.aol.com/account/security',
-      steps: 'Open Account Security, choose Generate app password, and create one for "Despatch Mobile".',
+      steps: 'Open Account Security, choose Generate app password, and create one for "Dispatch Mobile".',
     },
   },
   {
@@ -77,7 +77,7 @@ export const PROVIDERS = [
     appPassword: {
       optional: true,
       url: 'https://accounts.zoho.com/home#security/app_password',
-      steps: 'If you use two-factor authentication, create an app password for "Despatch Mobile".',
+      steps: 'If you use two-factor authentication, create an app password for "Dispatch Mobile".',
     },
   },
   {

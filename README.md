@@ -1,4 +1,4 @@
-# Despatch Mobile
+# Dispatch Mobile
 
 A native Android IMAP email client built with HTML5, CSS3 and vanilla JavaScript, packaged with [Capacitor](https://capacitorjs.com/). Requires Android 16 (API 36) or later.
 

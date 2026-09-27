@@ -1,8 +1,8 @@
-# Google Play listing: Despatch Mobile
+# Google Play listing: Dispatch Mobile
 
 ## App details
 
-- **App name:** Despatch Mobile
+- **App name:** Dispatch Mobile
 - **Category:** Communication
 - **Tags:** Email, Productivity
 - **Contact email:** (your support address)
@@ -14,13 +14,13 @@ All your IMAP email in one place: conversations, fast search and deadlines.
 
 ## Full description
 
-Despatch Mobile is a clean, fast email app for any IMAP account: your own domain, your hosting provider's mailbox, Fastmail, iCloud, Yahoo, Gmail with an app password, and more. Add as many accounts as you like and read them together in the Unified Inbox, each with its own colour.
+Dispatch Mobile is a clean, fast email app for any IMAP account: your own domain, your hosting provider's mailbox, Fastmail, iCloud, Yahoo, Gmail with an app password, and more. Add as many accounts as you like and read them together in the Unified Inbox, each with its own colour.
 
 **Conversations.** Replies are grouped with the messages they answer, including the ones you sent, and quoted history is tucked away so you see what's new.
 
 **Search that finds it.** Search every account on the device in an instant, with filters like from:, has:attachment, is:unread or before:, and search the server for older mail.
 
-**Deadlines to your calendar.** When an email mentions a due date, a meeting or an appointment, Despatch Mobile offers to add it to your calendar as an event file, with a reminder.
+**Deadlines to your calendar.** When an email mentions a due date, a meeting or an appointment, Dispatch Mobile offers to add it to your calendar as an event file, with a reminder.
 
 **Private by design.**
 - Your mail is stored on your phone in an encrypted database, and your passwords stay in Android's secure key store.

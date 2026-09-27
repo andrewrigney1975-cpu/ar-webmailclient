@@ -33,7 +33,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: despatch-mobile-debug
+          name: dispatch-mobile-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
       - uses: actions/upload-artifact@v4

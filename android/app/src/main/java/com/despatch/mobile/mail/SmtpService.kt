@@ -70,7 +70,7 @@ class SmtpService(private val passwords: PasswordSource) {
             message.sentDate = Date()
             outgoing.inReplyTo?.let { message.setHeader("In-Reply-To", it) }
             if (outgoing.references.isNotEmpty()) message.setHeader("References", outgoing.references.joinToString(" "))
-            message.setHeader("User-Agent", "Despatch Mobile")
+            message.setHeader("User-Agent", "Dispatch Mobile")
 
             val alternative = alternativeOf(outgoing)
             if (outgoing.attachments.isEmpty()) {

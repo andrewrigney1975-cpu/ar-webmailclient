@@ -1,6 +1,6 @@
 {
   "appId": "com.despatch.mobile",
-  "appName": "Despatch Mobile",
+  "appName": "Dispatch",
   "webDir": "dist",
   "loggingBehavior": "none",
   "android": {

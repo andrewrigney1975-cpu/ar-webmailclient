@@ -139,7 +139,7 @@ class AiaTrustManager(
                 socket.connect(InetSocketAddress(uri.host, port), MailSessions.CONNECT_TIMEOUT_MS)
                 socket.soTimeout = MailSessions.CONNECT_TIMEOUT_MS
                 val path = uri.rawPath.ifEmpty { "/" } + (uri.rawQuery?.let { "?$it" } ?: "")
-                val request = "GET $path HTTP/1.0\r\nHost: ${uri.host}\r\nUser-Agent: Despatch Mobile\r\nConnection: close\r\n\r\n"
+                val request = "GET $path HTTP/1.0\r\nHost: ${uri.host}\r\nUser-Agent: Dispatch Mobile\r\nConnection: close\r\n\r\n"
                 socket.getOutputStream().write(request.toByteArray(Charsets.US_ASCII))
                 socket.getInputStream().use(::readLimited)
             } ?: return null

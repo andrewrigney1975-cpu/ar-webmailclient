@@ -99,7 +99,7 @@ describe('ics', () => {
     expect(ics.split('\r\n').slice(0, 6)).toEqual([
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Despatch Mobile//EN',
+      'PRODID:-//Dispatch Mobile//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
       'BEGIN:VEVENT',

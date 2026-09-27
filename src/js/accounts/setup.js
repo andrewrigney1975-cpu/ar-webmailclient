@@ -75,7 +75,7 @@ export async function addAccount(
 }
 
 function unsupportedMessage(provider) {
-  return `${provider.name} has turned off password sign-in for other mail apps. Support is planned for Despatch Mobile ${provider.unsupportedUntil}.`;
+  return `${provider.name} has turned off password sign-in for other mail apps. Support is planned for Dispatch Mobile ${provider.unsupportedUntil}.`;
 }
 
 /** Turns a SetupError into text for the wizard. `showManual` means the server settings form should open. */

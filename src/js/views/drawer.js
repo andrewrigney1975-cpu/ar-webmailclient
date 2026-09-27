@@ -42,7 +42,7 @@ export function renderDrawer(element, { route, accounts, folders }) {
   render(
     element,
     html`
-      <h2 class="nav__heading nav__heading--app">Despatch Mobile</h2>
+      <h2 class="nav__heading nav__heading--app">Dispatch</h2>
       <ul class="nav__list">
         ${navItem(
           buildHash({ name: 'mailbox', folderId: UNIFIED_INBOX }),
