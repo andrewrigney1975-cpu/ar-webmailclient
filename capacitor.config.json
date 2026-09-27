@@ -10,9 +10,6 @@
       "insetsHandling": "css",
       "initialViewportFitValueHint": "cover",
       "style": "DEFAULT"
-    },
-    "Keyboard": {
-      "resizeOnFullScreen": true
     }
   }
 }
