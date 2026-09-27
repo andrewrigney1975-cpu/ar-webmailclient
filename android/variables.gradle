@@ -12,5 +12,9 @@ ext {
     junitVersion = '4.13.2'
     androidxJunitVersion = '1.3.0'
     androidxEspressoCoreVersion = '3.7.0'
+    kotlinxCoroutinesVersion = '1.11.0'
+    angusMailVersion = '2.0.5'
+    jakartaMailApiVersion = '2.1.5'
+    greenmailVersion = '2.1.14'
     cordovaAndroidVersion = '14.0.1'
 }
