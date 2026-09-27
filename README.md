@@ -25,11 +25,11 @@ npm run sync           # build the web app and copy it into android/
 npm run android:open   # open the project in Android Studio
 ```
 
-To build a debug APK from the command line, point `JAVA_HOME` at Android Studio's JDK first:
+To build a debug APK from the command line, point `JAVA_HOME` at Android Studio's JDK first. Some Capacitor plugins build with a JDK 21 toolchain: Gradle downloads one if needed (foojay resolver in `settings.gradle`), or you can point it at a local JDK 21:
 
 ```sh
 export JAVA_HOME="/f/Program Files/Android/Android Studio/jbr"
-npm run android:debug  # android/app/build/outputs/apk/debug/app-debug.apk
+cd android && ./gradlew assembleDebug "-Porg.gradle.java.installations.paths=C:/Program Files/Android/openjdk/jdk-21.0.8"
 ```
 
 Native unit tests run the IMAP/SMTP code against an in-process [GreenMail](https://greenmail-mail-test.github.io/greenmail/) server:

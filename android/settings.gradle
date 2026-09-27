@@ -1,3 +1,9 @@
+// Capacitor plugins such as @capacitor/filesystem build with a JDK 21 toolchain;
+// this lets Gradle download one when the machine doesn't have it.
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
 include ':app'
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')

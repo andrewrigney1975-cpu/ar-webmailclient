@@ -94,6 +94,29 @@ class SmtpServiceTest {
     }
 
     @Test
+    fun buildsAndStoresDraftsWithoutRecipients() = runBlocking<Unit> {
+        val store = Session.getInstance(Properties()).getStore("imap")
+        store.connect("127.0.0.1", server.greenMail.imap.port, server.login, server.password)
+        store.getFolder("Drafts").create(Folder.HOLDS_MESSAGES)
+        store.close()
+
+        val draft = SmtpService.build(
+            MailSessions.imap(server.account.imap),
+            reply().copy(to = emptyList(), bcc = emptyList(), subject = "Half written"),
+            requireRecipients = false,
+        )
+        val first = imap.append(server.account, "Drafts", draft, listOf("\\Draft", "\\Seen"))
+        assertNotNull(first)
+        imap.deleteMessages(server.account, "Drafts", listOf(first!!))
+        val second = imap.append(server.account, "Drafts", draft, listOf("\\Draft", "\\Seen"))
+
+        val saved = imap.fetchEnvelopes(server.account, "Drafts", MessageQuery.Latest(10)).single()
+        assertEquals(second, saved.uid)
+        assertEquals("Half written", saved.subject)
+        assertTrue("\\Draft" in saved.flags)
+    }
+
+    @Test
     fun rejectsMessagesWithoutRecipients() = runBlocking<Unit> {
         try {
             smtp.send(server.account, reply().copy(to = emptyList(), bcc = emptyList()))

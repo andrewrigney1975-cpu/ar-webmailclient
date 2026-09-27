@@ -123,6 +123,10 @@ export function createMailApi(plugin) {
     /** Shares a downloaded attachment through the system share sheet. */
     shareFile: (path, mimeType, title) => call('shareFile', { path, mimeType, title }),
 
+    /** Saves a draft to the Drafts folder, replacing `replaceUid`. Returns the new UID (or null). */
+    saveDraft: async (account, message, { draftsFolder, replaceUid = null }) =>
+      (await call('saveDraft', { account: toNativeAccount(account), message, draftsFolder, replaceUid })).uid ?? null,
+
     /**
      * Sends a message. With `sentFolder`, a copy is appended there; if that fails
      * the send still succeeds and `sentFolderError` holds the error code.

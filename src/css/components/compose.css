@@ -1,0 +1,241 @@
+/* --- Compose ------------------------------------------------------------------------------------- */
+
+.compose {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--inset-bottom);
+}
+
+.compose__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 52px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.compose__label {
+  flex: none;
+  width: 3em;
+  color: var(--on-surface-variant);
+  font-size: var(--text-sm);
+}
+
+.compose__from {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose__select,
+.compose__subject {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  border: 0;
+  background: none;
+  color: var(--on-surface);
+  font-size: var(--text-md);
+}
+
+.compose__subject:focus-visible,
+.compose__select:focus-visible,
+.compose__body:focus-visible {
+  outline: none;
+}
+
+.compose__body {
+  flex: 1;
+  min-height: 50dvh;
+  padding: var(--space-4);
+  border: 0;
+  resize: none;
+  background: none;
+  color: var(--on-surface);
+  font: 400 var(--text-md) / 1.5 var(--font);
+}
+
+.compose__attach {
+  position: relative;
+}
+
+.compose__send {
+  color: var(--accent);
+}
+
+.compose__attachments {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4) 0;
+}
+
+.compose__attachment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-left: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.compose__attachment .attachment__name {
+  flex: 1;
+  min-width: 0;
+}
+
+.compose__attachment .icon {
+  color: var(--accent);
+}
+
+.compose__warning {
+  padding: var(--space-2) var(--space-4) 0;
+  color: var(--danger);
+  font-size: var(--text-sm);
+}
+
+.compose__loading {
+  padding: var(--space-6);
+}
+
+/* --- Address input -------------------------------------------------------------------------------- */
+
+dm-address-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.address-input {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) 0;
+}
+
+.address-input__chips {
+  display: contents;
+}
+
+.address-input__text {
+  flex: 1;
+  min-width: 8em;
+  min-height: 40px;
+  border: 0;
+  background: none;
+  color: var(--on-surface);
+  font-size: var(--text-md);
+}
+
+.address-input__text:focus-visible {
+  outline: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 32px;
+  padding-left: var(--space-3);
+  border-radius: 16px;
+  background: var(--accent-container);
+  color: var(--on-accent-container);
+  font-size: var(--text-sm);
+}
+
+.chip--invalid {
+  background: color-mix(in oklch, var(--danger) 18%, var(--surface));
+  color: var(--danger);
+}
+
+.chip__label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chip__remove {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.chip__remove .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.address-input__suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 40dvh;
+  margin: 0;
+  padding: var(--space-1) 0;
+  overflow-y: auto;
+  list-style: none;
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-high);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
+}
+
+.address-input__option {
+  display: grid;
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+}
+
+.address-input__option[aria-selected='true'] {
+  background: var(--accent-hover);
+}
+
+.address-input__address {
+  font-size: var(--text-sm);
+  color: var(--on-surface-variant);
+}
+
+/* --- Compose button and card actions --------------------------------------------------------------- */
+
+.pane--list {
+  position: relative;
+}
+
+.fab {
+  position: absolute;
+  right: var(--space-4);
+  bottom: calc(var(--inset-bottom) + var(--space-4));
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: 0 var(--space-6) 0 var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--accent-container);
+  color: var(--on-accent-container);
+  font-weight: 500;
+  text-decoration: none;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.25);
+}
+
+.card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: 0 var(--space-2) var(--space-2);
+}
+
+.card__actions .text-button {
+  border: 1px solid var(--outline-variant);
+}

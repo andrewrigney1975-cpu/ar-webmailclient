@@ -13,12 +13,14 @@ import { discover } from './mail/autoconfig.js';
 import { getText } from './net/http.js';
 import { createSyncManager } from './mail/sync-manager.js';
 import { createMessageActions } from './mail/actions.js';
+import { createOutbox } from './mail/outbox.js';
 import { addAccount } from './accounts/setup.js';
 import { renderDrawer } from './views/drawer.js';
 import { createMailboxView } from './views/mailbox.js';
 import { createThreadView } from './views/thread-view.js';
 import { renderSettings } from './views/settings.js';
 import { createAccountSetupView } from './views/account-setup.js';
+import { createComposeView } from './views/compose.js';
 import { chooseFromSheet, confirmDialog, createSnackbar } from './views/components/overlays.js';
 
 const app = document.getElementById('app');
@@ -28,6 +30,7 @@ const listPane = document.getElementById('list-pane');
 const readingPane = document.getElementById('reading-pane');
 const page = document.getElementById('page');
 const setupPage = document.getElementById('setup-page');
+const composePage = document.getElementById('compose-page');
 
 const store = createStore({
   route: null,
@@ -42,12 +45,14 @@ const store = createStore({
   dataVersion: 0,
   confirmRemoveId: null,
   settings: await loadSettings(),
+  outbox: [],
 });
 
 const db = await openDatabase();
 const syncManager = createSyncManager({ db, mail, store });
 const actions = createMessageActions({ db, mail, store });
 const snackbar = createSnackbar(document.getElementById('snackbar'));
+const outbox = createOutbox({ db, mail, store });
 
 const router = createRouter({
   onChange: (route) => {
@@ -58,7 +63,7 @@ const router = createRouter({
 });
 
 // Development builds only: handles for debugging from the console.
-if (import.meta.env.DEV) window.despatch = { db, store, mail, syncManager, actions, router };
+if (import.meta.env.DEV) window.despatch = { db, store, mail, syncManager, actions, router, outbox };
 
 function showError(error) {
   snackbar.show(error?.message ?? 'Something went wrong.');
@@ -108,6 +113,13 @@ const mailboxView = createMailboxView({
   syncManager,
   snackbar,
   onError: showError,
+  async onOutboxAction(action, id) {
+    if (action === 'retry') await outbox.retry(id).catch(showError);
+    if (action === 'edit') {
+      const item = await outbox.cancel(id);
+      if (item?.data.draftId) router.navigate({ name: 'compose', mode: 'draft', id: item.data.draftId });
+    }
+  },
 });
 mailboxView.setDialogs({ pickFolder, confirmDeleteForever });
 
@@ -120,6 +132,7 @@ const threadView = createThreadView({
   snackbar,
   onError: showError,
   openExternal,
+  onCompose: (route) => router.navigate(route),
   dialogs: { pickFolder, confirmDeleteForever },
   onClose: () => {
     const route = store.get().lastMailboxRoute;
@@ -148,6 +161,17 @@ const accountSetup = createAccountSetupView({
   },
 });
 
+const composeView = createComposeView({
+  element: composePage,
+  db,
+  store,
+  mail,
+  outbox,
+  router,
+  snackbar,
+  onError: showError,
+});
+
 // --- Rendering -----------------------------------------------------------------------------------
 
 let unregisterDrawer = null;
@@ -163,6 +187,9 @@ function renderApp(state, previous = {}) {
 
   page.hidden = route.name !== 'settings';
   setupPage.hidden = route.name !== 'accountSetup';
+  composePage.hidden = route.name !== 'compose';
+  if (route.name === 'compose' && route !== previous.route) composeView.open(route);
+  if (previous.route?.name === 'compose' && route !== previous.route) composeView.close();
   if (route.name === 'settings') renderSettings(page, state);
   if (route.name === 'accountSetup' && previous.route?.name !== 'accountSetup') accountSetup.reset();
 
@@ -195,7 +222,7 @@ function renderApp(state, previous = {}) {
   if (state.settings.threading !== previous.settings?.threading && previous.settings) {
     mailboxView.modeChanged();
   }
-  if (['accounts', 'sync', 'online', 'folders'].some((key) => state[key] !== previous[key])) {
+  if (['accounts', 'sync', 'online', 'folders', 'outbox'].some((key) => state[key] !== previous[key])) {
     mailboxView.statusChanged();
   }
   if (state.dataVersion !== previous.dataVersion || state.accounts !== previous.accounts) {
@@ -265,7 +292,15 @@ router.start();
 await initPlatform({
   router,
   store,
-  onResume: () => syncManager.syncAll(),
-  onOnline: () => syncManager.syncAll(),
+  onResume: () => {
+    syncManager.syncAll();
+    outbox.process();
+  },
+  onOnline: () => {
+    syncManager.syncAll();
+    outbox.process();
+  },
 });
 syncManager.start();
+await outbox.refresh();
+outbox.process();

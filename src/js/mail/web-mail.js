@@ -231,6 +231,29 @@ export class DespatchMailWeb extends WebPlugin {
     throw mailError('UNSUPPORTED', 'Sharing attachments needs the Android app.');
   }
 
+  async saveDraft({ account, message, draftsFolder, replaceUid }) {
+    const folder = this.#folder(account, draftsFolder);
+    if (replaceUid != null) folder.messages = folder.messages.filter((m) => m.uid !== replaceUid);
+    const uid = folder.uidNext++;
+    folder.messages.push({
+      uid,
+      messageId: `<draft-${uid}@${message.from.address.split('@')[1]}>`,
+      inReplyTo: message.inReplyTo ?? null,
+      references: message.references ?? [],
+      subject: message.subject,
+      from: [message.from],
+      to: message.to ?? [],
+      cc: message.cc ?? [],
+      replyTo: [],
+      dateSent: Date.now(),
+      dateReceived: Date.now(),
+      size: (message.text ?? '').length + 800,
+      flags: ['\\Draft', '\\Seen'],
+      body: { text: message.text ?? null, html: message.html ?? null, attachments: [] },
+    });
+    return { uid };
+  }
+
   // --- Sending -------------------------------------------------------------------------------
 
   async send({ account, message, sentFolder }) {

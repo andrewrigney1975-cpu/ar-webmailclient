@@ -247,6 +247,27 @@ class DespatchMailPlugin : Plugin() {
         JSObject().put("colors", colors)
     }
 
+    /**
+     * Saves a draft to the account's Drafts folder (flagged \Draft and \Seen)
+     * and removes the previous copy (`replaceUid`). Returns the new UID when
+     * the server reports it.
+     */
+    @PluginMethod
+    fun saveDraft(call: PluginCall) = run(call) {
+        val account = call.requireAccount()
+        val folder = call.requireString("draftsFolder")
+        val message = SmtpService.build(MailSessions.imap(account.imap), call.outgoingMessage(), requireRecipients = false)
+        val uid = imap.append(account, folder, message, listOf("\\Draft", "\\Seen"))
+        call.getLong("replaceUid")?.let { old ->
+            try {
+                imap.deleteMessages(account, folder, listOf(old))
+            } catch (_: Throwable) {
+                // An old draft left behind is harmless; the new one is saved.
+            }
+        }
+        JSObject().put("uid", uid)
+    }
+
     private fun safeFilename(name: String) =
         name.replace(Regex("[^A-Za-z0-9._ -]"), "_").trim().trimStart('.').ifEmpty { "file" }.take(120)
 }

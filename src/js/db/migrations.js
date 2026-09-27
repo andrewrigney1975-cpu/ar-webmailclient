@@ -123,6 +123,32 @@ export const MIGRATIONS = [
       CREATE INDEX messages_folder_thread ON messages (folder_id, thread_id);
     `,
   },
+  {
+    version: 4,
+    sql: `
+      -- Compose (PLAN.md §4.8): local drafts, autosaved while editing and
+      -- mirrored to the IMAP Drafts folder when the editor closes.
+      CREATE TABLE drafts (
+        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        data_json TEXT NOT NULL,
+        remote_uid INTEGER,
+        updated_at INTEGER NOT NULL
+      );
+
+      -- Outbox (PLAN.md §4.1): messages wait here until sent, so sending
+      -- works offline and can be undone for a few seconds.
+      CREATE TABLE outbox (
+        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        data_json TEXT NOT NULL,
+        send_after INTEGER NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT,
+        created_at INTEGER NOT NULL
+      );
+    `,
+  },
 ];
 
 export async function migrate(db, migrations = MIGRATIONS) {

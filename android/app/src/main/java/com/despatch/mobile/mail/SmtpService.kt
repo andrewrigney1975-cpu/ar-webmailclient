@@ -53,8 +53,9 @@ class SmtpService(private val passwords: PasswordSource) {
     companion object {
         private const val CHARSET = "UTF-8"
 
-        fun build(session: Session, outgoing: OutgoingMessage): MimeMessage {
-            if (outgoing.to.isEmpty() && outgoing.cc.isEmpty() && outgoing.bcc.isEmpty()) {
+        /** Builds the MIME message. Drafts may not have recipients yet ([requireRecipients] false). */
+        fun build(session: Session, outgoing: OutgoingMessage, requireRecipients: Boolean = true): MimeMessage {
+            if (requireRecipients && outgoing.to.isEmpty() && outgoing.cc.isEmpty() && outgoing.bcc.isEmpty()) {
                 throw MailException(MailErrorCode.INVALID_ARGUMENT, "The message has no recipients.")
             }
             val domain = outgoing.from.address.substringAfter('@', "despatch.invalid")

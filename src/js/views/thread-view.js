@@ -30,7 +30,19 @@ function initialOf(person) {
   return (text[0] ?? '?').toUpperCase();
 }
 
-export function createThreadView({ element, db, store, mail, actions, snackbar, onError, onClose, openExternal, dialogs }) {
+export function createThreadView({
+  element,
+  db,
+  store,
+  mail,
+  actions,
+  snackbar,
+  onError,
+  onClose,
+  onCompose,
+  openExternal,
+  dialogs,
+}) {
   let route = null;
   let loadId = 0;
   // { key, messages, expanded: Set<id>, bodies: Map<id, { body?, error? }>, allowRemote: Set<id>,
@@ -193,6 +205,17 @@ export function createThreadView({ element, db, store, mail, actions, snackbar, 
         </div>
         <time class="card__date">${formatFullDate(message.dateSent ?? message.dateReceived)}</time>
       </header>
+      <div class="card__actions">
+        ${folderOf(message)?.role === 'drafts'
+          ? html`<button class="text-button" type="button" data-card="edit-draft">${icon('edit')} Edit draft</button>`
+          : html`
+              <button class="text-button" type="button" data-card="reply">${icon('reply')} Reply</button>
+              ${message.to.length + message.cc.length > 1
+                ? html`<button class="text-button" type="button" data-card="replyall">${icon('reply-all')} Reply all</button>`
+                : ''}
+              <button class="text-button" type="button" data-card="forward">${icon('forward')} Forward</button>
+            `}
+      </div>
       <div class="banner banner--info message__remote" data-part="remote" hidden>
         ${icon('image')}
         <div>
@@ -319,7 +342,7 @@ export function createThreadView({ element, db, store, mail, actions, snackbar, 
       event.preventDefault();
       const href = link.getAttribute('href');
       if (/^https?:/i.test(href)) openExternal(href);
-      else if (/^mailto:/i.test(href)) snackbar.show('Writing email isn’t available yet.');
+      else if (/^mailto:/i.test(href)) onCompose({ name: 'compose', mode: 'mailto', id: encodeURIComponent(href) });
     });
   }
 
@@ -425,6 +448,14 @@ export function createThreadView({ element, db, store, mail, actions, snackbar, 
       case 'show-images':
         state.allowRemote.add(message.id);
         drawCard(message.id);
+        break;
+      case 'reply':
+      case 'replyall':
+      case 'forward':
+        onCompose({ name: 'compose', mode: action, id: String(message.id) });
+        break;
+      case 'edit-draft':
+        onCompose({ name: 'compose', mode: 'draft', id: `msg:${message.id}` });
         break;
       case 'trust-sender':
         await trustSender(db, message.from.address);

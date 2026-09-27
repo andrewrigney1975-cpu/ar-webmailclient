@@ -6,6 +6,8 @@
  *   #/folder/:folderId/thread/:threadId list + selected thread
  *   #/settings                          settings page
  *   #/accounts/new                      add-account wizard
+ *   #/compose                           new message
+ *   #/compose/:mode/:id                 reply | replyall | forward (message id), or draft (draft id)
  *
  * The selected folder and thread live in the URL at every width, so rotating or
  * unfolding the device keeps the selection. Back navigation is deterministic
@@ -13,6 +15,7 @@
  */
 
 export const UNIFIED_INBOX = 'unified';
+const COMPOSE_MODES = ['reply', 'replyall', 'forward', 'draft', 'mailto'];
 
 export function parseHash(hash) {
   const parts = hash
@@ -31,6 +34,10 @@ export function parseHash(hash) {
   }
   if (parts[0] === 'settings' && parts.length === 1) return { name: 'settings' };
   if (parts[0] === 'accounts' && parts[1] === 'new' && parts.length === 2) return { name: 'accountSetup' };
+  if (parts[0] === 'compose' && parts.length === 1) return { name: 'compose', mode: 'new', id: null };
+  if (parts[0] === 'compose' && parts.length === 3 && COMPOSE_MODES.includes(parts[1])) {
+    return { name: 'compose', mode: parts[1], id: parts[2] };
+  }
 
   return { name: 'notFound' };
 }
@@ -45,6 +52,10 @@ export function buildHash(route) {
       return '#/settings';
     case 'accountSetup':
       return '#/accounts/new';
+    case 'compose':
+      return route.mode && route.mode !== 'new'
+        ? `#/compose/${route.mode}/${encodeURIComponent(route.id)}`
+        : '#/compose';
     default:
       return `#/folder/${UNIFIED_INBOX}`;
   }
@@ -64,6 +75,7 @@ export function parentOf(route, lastMailbox) {
       return null;
     case 'settings':
     case 'accountSetup':
+    case 'compose':
     case 'notFound':
       return lastMailbox ?? { name: 'mailbox', folderId: UNIFIED_INBOX, threadId: null };
     default:

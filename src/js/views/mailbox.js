@@ -22,7 +22,7 @@ function initialOf(person) {
   return (text[0] ?? '?').toUpperCase();
 }
 
-export function createMailboxView({ element, db, store, router, actions, syncManager, snackbar, onError }) {
+export function createMailboxView({ element, db, store, router, actions, syncManager, snackbar, onError, onOutboxAction }) {
   render(
     element,
     html`
@@ -32,6 +32,7 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
         <div class="pull-indicator" hidden>${icon('refresh')}</div>
         <div class="mailbox__empty" data-part="empty"></div>
       </div>
+      <a class="fab" href="#/compose" data-part="compose">${icon('edit')}<span>Compose</span></a>
     `,
   );
   const bar = element.querySelector('[data-part=bar]');
@@ -283,6 +284,11 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
     );
   }
 
+  banners.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-outbox]');
+    if (button) onOutboxAction(button.dataset.outbox, button.dataset.id);
+  });
+
   bar.addEventListener('click', (event) => {
     const button = event.target.closest('[data-selection], [data-part=refresh]');
     if (!button) return;
@@ -291,11 +297,27 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
     else runSelectionAction(button.dataset.selection);
   });
 
+  function outboxBanner() {
+    const { outbox } = store.get();
+    if (!outbox.length) return '';
+    const failed = outbox.filter((item) => item.lastError);
+    const waiting = outbox.length === 1 ? '1 message waiting to send' : `${outbox.length} messages waiting to send`;
+    return html`<div class="banner${failed.length ? ' banner--error' : ''}" role="status">
+      ${icon(failed.length ? 'error' : 'schedule')}
+      <p>${waiting}${failed.length ? html`: ${failed[0].lastError.message}` : ''}</p>
+      ${failed.length
+        ? html`<button class="banner__action text-button" type="button" data-outbox="retry" data-id="${failed[0].id}">Retry</button>
+            <button class="banner__action text-button" type="button" data-outbox="edit" data-id="${failed[0].id}">Edit</button>`
+        : ''}
+    </div>`;
+  }
+
   function renderBanners() {
     const { accounts, sync, online } = store.get();
     render(
       banners,
       html`
+        ${outboxBanner()}
         ${online ? '' : html`<div class="banner" role="status">${icon('error')}<p>You’re offline. Showing saved mail.</p></div>`}
         ${accounts
           .filter((a) => sync[a.id]?.state === 'error')

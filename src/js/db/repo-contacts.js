@@ -22,3 +22,21 @@ export async function recordContacts(tx, addresses, direction, seenAt) {
 export async function getContact(db, address) {
   return db.get('SELECT * FROM contacts WHERE address = ?', [address]);
 }
+
+/**
+ * Contacts matching what's typed (address, or the start of any word of the
+ * name), ranked for autocomplete.
+ */
+export async function searchContacts(db, query, { limit = 8, rank } = {}) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  // "!" escapes LIKE wildcards typed by the user.
+  const like = `${q.replace(/[!%_]/g, (c) => `!${c}`)}%`;
+  const rows = await db.all(
+    `SELECT * FROM contacts
+     WHERE address LIKE ? ESCAPE '!' OR LOWER(name) LIKE ? ESCAPE '!' OR LOWER(name) LIKE ? ESCAPE '!'
+     LIMIT 50`,
+    [like, like, `% ${like}`],
+  );
+  return (rank ? rank(rows, q) : rows).slice(0, limit).map((c) => ({ name: c.name, address: c.address }));
+}
