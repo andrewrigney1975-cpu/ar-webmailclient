@@ -1,0 +1,171 @@
+.setup {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4) calc(var(--space-6) + var(--inset-bottom));
+  max-width: 560px;
+  width: 100%;
+  margin-inline: auto;
+}
+
+.setup__intro {
+  color: var(--on-surface-variant);
+}
+
+.setup__hint:empty {
+  display: none;
+}
+
+.setup__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--on-surface-variant);
+}
+
+.field small {
+  font-size: var(--text-xs);
+}
+
+.field input,
+.field select {
+  min-height: 48px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--on-surface);
+  font-size: var(--text-md);
+}
+
+.field input:focus-visible,
+.field select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+.field-group {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.field-group legend {
+  padding-inline: var(--space-1);
+  font-weight: 500;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 96px;
+  gap: var(--space-3);
+}
+
+.checkbox {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  font-size: var(--text-sm);
+}
+
+.checkbox input {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+.text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  justify-self: start;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: 20px;
+  background: none;
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.text-button:hover {
+  background: var(--accent-hover);
+}
+
+.text-button .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.text-button--danger {
+  color: var(--danger);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Banners: offline, sync errors, setup hints. */
+.banner {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  margin: 0 var(--space-3) var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  color: var(--on-surface);
+  font-size: var(--text-sm);
+}
+
+.setup .banner {
+  margin: 0;
+}
+
+.banner > p,
+.banner > div {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.banner > .icon {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+}
+
+.banner--error {
+  background: color-mix(in oklch, var(--danger) 14%, var(--surface));
+}
+
+.banner--error > .icon {
+  color: var(--danger);
+}
+
+.banner--info {
+  background: var(--accent-container);
+}
+
+.banner--warning {
+  background: color-mix(in oklch, #f7b731 22%, var(--surface));
+}
+
+.banner__action {
+  align-self: center;
+  font-weight: 500;
+  text-decoration: none;
+}

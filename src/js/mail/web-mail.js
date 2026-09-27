@@ -154,6 +154,10 @@ export class DespatchMailWeb extends WebPlugin {
 
   async disconnect() {}
 
+  async getDynamicColors() {
+    return { colors: [] };
+  }
+
   // --- Folders and messages ------------------------------------------------------------------
 
   async listFolders({ account }) {
@@ -291,7 +295,11 @@ export class DespatchMailWeb extends WebPlugin {
   #select(folder, query) {
     const sorted = [...folder.messages].sort((a, b) => a.uid - b.uid);
     if ('uids' in query) return sorted.filter((m) => query.uids.includes(m.uid));
-    if ('fromUid' in query) return sorted.filter((m) => m.uid >= query.fromUid && (query.toUid == null || m.uid <= query.toUid));
+    if ('fromUid' in query) {
+      const matches = sorted.filter((m) => m.uid >= query.fromUid && (query.toUid == null || m.uid <= query.toUid));
+      // Like IMAP "n:*": when n is above the highest UID, "*" still matches the newest message.
+      return matches.length === 0 && query.toUid == null ? sorted.slice(-1) : matches;
+    }
     if ('latest' in query) return query.latest > 0 ? sorted.slice(-query.latest) : [];
     throw mailError('INVALID_ARGUMENT', 'query needs uids, fromUid or latest');
   }

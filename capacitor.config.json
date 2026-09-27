@@ -2,6 +2,7 @@
   "appId": "com.despatch.mobile",
   "appName": "Despatch Mobile",
   "webDir": "dist",
+  "loggingBehavior": "none",
   "android": {
     "minWebViewVersion": 140
   },
@@ -10,6 +11,12 @@
       "insetsHandling": "css",
       "initialViewportFitValueHint": "cover",
       "style": "DEFAULT"
+    },
+    "CapacitorSQLite": {
+      "androidIsEncryption": true,
+      "androidBiometric": {
+        "biometricAuth": false
+      }
     }
   }
 }

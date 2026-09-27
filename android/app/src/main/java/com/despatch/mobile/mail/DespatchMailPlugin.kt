@@ -181,6 +181,23 @@ class DespatchMailPlugin : Plugin() {
         result
     }
 
+    // --- Theme ------------------------------------------------------------------------------
+
+    /** Material You colours from the wallpaper, used as default account accents (PLAN.md §4.5). */
+    @PluginMethod
+    fun getDynamicColors(call: PluginCall) = run(call) {
+        val ids = listOf(
+            android.R.color.system_accent1_600,
+            android.R.color.system_accent3_600,
+            android.R.color.system_accent2_600,
+            android.R.color.system_accent1_400,
+            android.R.color.system_accent3_400,
+        )
+        val colors = JSArray()
+        ids.map { context.getColor(it) }.distinct().forEach { colors.put(String.format("#%06x", it and 0xFFFFFF)) }
+        JSObject().put("colors", colors)
+    }
+
     private fun safeFilename(name: String) =
         name.replace(Regex("[^A-Za-z0-9._ -]"), "_").trim().trimStart('.').ifEmpty { "file" }.take(120)
 }

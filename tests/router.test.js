@@ -31,6 +31,7 @@ describe('buildHash', () => {
       { name: 'mailbox', folderId: 'acc 1/INBOX', threadId: null },
       { name: 'mailbox', folderId: 'f1', threadId: '<id@example.com>' },
       { name: 'settings' },
+      { name: 'accountSetup' },
     ];
     for (const route of routes) expect(parseHash(buildHash(route))).toEqual(route);
   });

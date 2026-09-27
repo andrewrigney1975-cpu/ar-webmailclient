@@ -5,6 +5,7 @@
  *   #/folder/:folderId                  message list
  *   #/folder/:folderId/thread/:threadId list + selected thread
  *   #/settings                          settings page
+ *   #/accounts/new                      add-account wizard
  *
  * The selected folder and thread live in the URL at every width, so rotating or
  * unfolding the device keeps the selection. Back navigation is deterministic
@@ -29,6 +30,7 @@ export function parseHash(hash) {
     return { name: 'mailbox', folderId: parts[1], threadId: parts[3] };
   }
   if (parts[0] === 'settings' && parts.length === 1) return { name: 'settings' };
+  if (parts[0] === 'accounts' && parts[1] === 'new' && parts.length === 2) return { name: 'accountSetup' };
 
   return { name: 'notFound' };
 }
@@ -41,6 +43,8 @@ export function buildHash(route) {
     }
     case 'settings':
       return '#/settings';
+    case 'accountSetup':
+      return '#/accounts/new';
     default:
       return `#/folder/${UNIFIED_INBOX}`;
   }
@@ -59,6 +63,7 @@ export function parentOf(route, lastMailbox) {
       }
       return null;
     case 'settings':
+    case 'accountSetup':
     case 'notFound':
       return lastMailbox ?? { name: 'mailbox', folderId: UNIFIED_INBOX, threadId: null };
     default:

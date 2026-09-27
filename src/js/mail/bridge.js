@@ -43,13 +43,6 @@ function toMailError(error) {
   return new MailError(code, error?.message ?? String(error));
 }
 
-async function call(method, options) {
-  try {
-    return await DespatchMail[method](options);
-  } catch (error) {
-    throw toMailError(error);
-  }
-}
 
 function server(config) {
   return config && { host: config.host, port: config.port, security: config.security, username: config.username };
@@ -70,45 +63,61 @@ export function toNativeAccount(account) {
  * @typedef {{ uids: number[] } | { fromUid: number, toUid?: number | null } | { latest: number }} MessageQuery
  */
 
-export const mail = {
-  setCredentials: (accountId, password) => call('setCredentials', { accountId, password }),
-  deleteCredentials: (accountId) => call('deleteCredentials', { accountId }),
-  hasCredentials: async (accountId) => (await call('hasCredentials', { accountId })).value,
+/** Wraps a DespatchMail plugin instance. Tests pass the in-memory web implementation directly. */
+export function createMailApi(plugin) {
+  async function call(method, options) {
+    try {
+      return await plugin[method](options);
+    } catch (error) {
+      throw toMailError(error);
+    }
+  }
 
-  /** Checks IMAP (and SMTP when configured). `password` lets the setup wizard test before saving. */
-  testConnection: (account, { password } = {}) =>
-    call('testConnection', { account: toNativeAccount(account), password }),
+  return {
+    setCredentials: (accountId, password) => call('setCredentials', { accountId, password }),
+    deleteCredentials: (accountId) => call('deleteCredentials', { accountId }),
+    hasCredentials: async (accountId) => (await call('hasCredentials', { accountId })).value,
 
-  disconnect: (accountId) => call('disconnect', { accountId }),
+    /** Checks IMAP (and SMTP when configured). `password` lets the setup wizard test before saving. */
+    testConnection: (account, { password } = {}) =>
+      call('testConnection', { account: toNativeAccount(account), password }),
 
-  listFolders: async (account) => (await call('listFolders', { account: toNativeAccount(account) })).folders,
+    disconnect: (accountId) => call('disconnect', { accountId }),
 
-  folderStatus: (account, path) => call('folderStatus', { account: toNativeAccount(account), path }),
+    /** Material You wallpaper colours (empty in the browser). */
+    getDynamicColors: async () => (await call('getDynamicColors', {})).colors,
 
-  /** @param {MessageQuery} query */
-  fetchEnvelopes: async (account, path, query) =>
-    (await call('fetchEnvelopes', { account: toNativeAccount(account), path, query })).messages,
+    listFolders: async (account) => (await call('listFolders', { account: toNativeAccount(account) })).folders,
 
-  /** @param {MessageQuery} query */
-  fetchFlags: async (account, path, query) =>
-    (await call('fetchFlags', { account: toNativeAccount(account), path, query })).messages,
+    folderStatus: (account, path) => call('folderStatus', { account: toNativeAccount(account), path }),
 
-  fetchBody: (account, path, uid) => call('fetchBody', { account: toNativeAccount(account), path, uid }),
+    /** @param {MessageQuery} query */
+    fetchEnvelopes: async (account, path, query) =>
+      (await call('fetchEnvelopes', { account: toNativeAccount(account), path, query })).messages,
 
-  /** Saves an attachment to the app cache and returns `{ path, size }`. */
-  downloadAttachment: (account, path, uid, partId, filename) =>
-    call('downloadAttachment', { account: toNativeAccount(account), path, uid, partId, filename }),
+    /** @param {MessageQuery} query */
+    fetchFlags: async (account, path, query) =>
+      (await call('fetchFlags', { account: toNativeAccount(account), path, query })).messages,
 
-  setFlags: (account, path, uids, { add = [], remove = [] }) =>
-    call('setFlags', { account: toNativeAccount(account), path, uids, add, remove }),
+    fetchBody: (account, path, uid) => call('fetchBody', { account: toNativeAccount(account), path, uid }),
 
-  moveMessages: async (account, path, uids, destination) =>
-    (await call('moveMessages', { account: toNativeAccount(account), path, uids, destination })).newUids,
+    /** Saves an attachment to the app cache and returns `{ path, size }`. */
+    downloadAttachment: (account, path, uid, partId, filename) =>
+      call('downloadAttachment', { account: toNativeAccount(account), path, uid, partId, filename }),
 
-  /**
-   * Sends a message. With `sentFolder`, a copy is appended there; if that fails
-   * the send still succeeds and `sentFolderError` holds the error code.
-   */
-  send: (account, message, { sentFolder } = {}) =>
-    call('send', { account: toNativeAccount(account), message, sentFolder }),
-};
+    setFlags: (account, path, uids, { add = [], remove = [] }) =>
+      call('setFlags', { account: toNativeAccount(account), path, uids, add, remove }),
+
+    moveMessages: async (account, path, uids, destination) =>
+      (await call('moveMessages', { account: toNativeAccount(account), path, uids, destination })).newUids,
+
+    /**
+     * Sends a message. With `sentFolder`, a copy is appended there; if that fails
+     * the send still succeeds and `sentFolderError` holds the error code.
+     */
+    send: (account, message, { sentFolder } = {}) =>
+      call('send', { account: toNativeAccount(account), message, sentFolder }),
+  };
+}
+
+export const mail = createMailApi(DespatchMail);

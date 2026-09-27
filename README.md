@@ -53,6 +53,16 @@ const latest = await mail.fetchEnvelopes(account, 'INBOX', { latest: 50 });
 
 Passwords go in through `setCredentials` and are never returned to JS. Errors reject with a `MailError` whose `code` is one of `MailErrorCode` (for example `APP_PASSWORD_REQUIRED`). In a browser, `src/js/mail/web-mail.js` provides an in-memory mailbox with sample messages; the password `wrong` is always rejected.
 
+## Accounts, storage and sync
+
+- **Setup** (`src/js/accounts/setup.js`): known providers (Gmail, iCloud, Yahoo, AOL, Fastmail, Zoho) are configured without any lookup, and the wizard explains their app passwords. Other domains use the domain's own autoconfig, then Mozilla's ISPDB, then MX records (DNS over HTTPS), then a guess the user can edit. The password is saved only after a connection test succeeds. Outlook.com and Microsoft 365 are refused with a note that they arrive in v2.0.
+- **Database** (`src/js/db/`): SQLite, encrypted with SQLCipher on Android (the passphrase is generated once and held by the plugin in Android's encrypted storage). The browser build uses sql.js persisted to IndexedDB, unencrypted, for development only. Schema changes go in `migrations.js` as new versions.
+- **Sync** (`src/js/mail/sync.js`, `sync-manager.js`): Inbox and Sent sync on start, on resume, when the network returns and every 5 minutes while open. Other folders sync when opened. Each sync fetches only new UIDs, refreshes flags, removes expunged messages, handles UIDVALIDITY resets, and skips unchanged folders with CONDSTORE.
+
+In development builds, `window.despatch` exposes `{ db, store, mail, syncManager }` for the console.
+
+Bridge logging is off (`loggingBehavior: "none"` in `capacitor.config.json`) because Capacitor would otherwise write plugin arguments, including passwords, to logcat in debug builds.
+
 ## Project layout
 
 | Path | Contents |
@@ -63,6 +73,8 @@ Passwords go in through `setCredentials` and are never returned to JS. Errors re
 | `src/js/layout.js` | Window width classes (compact / medium / expanded / large) |
 | `src/js/theme/` | Accent colour and contrast handling |
 | `src/js/views/` | Views and custom elements |
-| `src/js/mail/` | Mail plugin bridge and its in-memory web implementation |
+| `src/js/mail/` | Mail plugin bridge, in-memory web implementation, discovery, sync |
+| `src/js/db/` | Database drivers, migrations and repositories |
+| `src/js/accounts/` | Add-account flow |
 | `android/` | Capacitor Android project (minSdk and targetSdk 36) |
 | `tests/` | Vitest unit tests |
