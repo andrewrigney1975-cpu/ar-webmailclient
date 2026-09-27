@@ -48,10 +48,14 @@ object MailSessions {
         this["mail.$protocol.writetimeout"] = IO_TIMEOUT_MS.toString()
         this["mail.mime.address.strict"] = "false"
         when (config.security) {
-            Security.TLS -> this["mail.$protocol.ssl.checkserveridentity"] = "true"
+            Security.TLS -> {
+                this["mail.$protocol.ssl.socketFactory"] = AiaTrustManager.socketFactory
+                this["mail.$protocol.ssl.checkserveridentity"] = "true"
+            }
             Security.STARTTLS -> {
                 this["mail.$protocol.starttls.enable"] = "true"
                 this["mail.$protocol.starttls.required"] = "true"
+                this["mail.$protocol.ssl.socketFactory"] = AiaTrustManager.socketFactory
                 this["mail.$protocol.ssl.checkserveridentity"] = "true"
             }
             Security.NONE -> Unit

@@ -16,5 +16,6 @@ ext {
     angusMailVersion = '2.0.5'
     jakartaMailApiVersion = '2.1.5'
     greenmailVersion = '2.1.14'
+    bouncyCastleVersion = '1.86'
     cordovaAndroidVersion = '14.0.1'
 }
