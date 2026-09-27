@@ -6,6 +6,8 @@ import jakarta.mail.Folder
 import jakarta.mail.Message
 import jakarta.mail.Store
 import jakarta.mail.UIDFolder
+import jakarta.mail.event.MessageCountAdapter
+import jakarta.mail.event.MessageCountEvent
 import jakarta.mail.internet.InternetAddress
 import jakarta.mail.internet.MimeMessage
 import jakarta.mail.search.AndTerm
@@ -288,6 +290,44 @@ class ImapService(private val passwords: PasswordSource) {
             newest.map { folder.getUID(it) }.sortedDescending()
         }
 
+    /**
+     * Holds IMAP IDLE on [path] and calls [onNewMail] when the server reports
+     * new messages. Blocks until [isActive] turns false or the connection
+     * fails, so run it on its own thread; the caller reconnects with backoff.
+     * It uses its own connection, because IDLE would block the shared one.
+     */
+    fun idle(account: AccountConfig, path: String, isActive: () -> Boolean, onNewMail: () -> Unit) {
+        val store = connect(account, null)
+        var keepAlive: Thread? = null
+        try {
+            val folder = existingFolder(store, path)
+            folder.open(Folder.READ_ONLY)
+            folder.addMessageCountListener(object : MessageCountAdapter() {
+                override fun messagesAdded(event: MessageCountEvent) = onNewMail()
+            })
+            // Mobile networks drop quiet connections; touching the folder ends
+            // the current IDLE (the loop below starts a new one).
+            keepAlive = Thread {
+                try {
+                    while (isActive() && folder.isOpen) {
+                        Thread.sleep(IDLE_KEEPALIVE_MS)
+                        folder.messageCount
+                    }
+                } catch (_: Exception) {
+                }
+            }.apply {
+                isDaemon = true
+                start()
+            }
+            while (isActive() && folder.isOpen) folder.idle(true)
+        } catch (error: Throwable) {
+            throw MailErrors.classify(error)
+        } finally {
+            keepAlive?.interrupt()
+            closeQuietly(store)
+        }
+    }
+
     /** Appends a message (e.g. to Sent or Drafts) and returns its UID when the server reports it. */
     suspend fun append(account: AccountConfig, path: String, message: MimeMessage, flags: List<String>): Long? =
         withStore(account) { store ->
@@ -359,6 +399,8 @@ class ImapService(private val passwords: PasswordSource) {
         list.orEmpty().filterIsInstance<InternetAddress>().map { MailAddress(it.personal, it.address) }
 
     companion object {
+        const val IDLE_KEEPALIVE_MS = 9 * 60_000L
+
         fun searchTerm(criteria: SearchCriteria): SearchTerm? {
             val terms = mutableListOf<SearchTerm>()
             // Each word may be in the subject, the sender or the body.

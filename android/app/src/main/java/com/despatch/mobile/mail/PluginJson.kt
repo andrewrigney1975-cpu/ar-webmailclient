@@ -18,6 +18,10 @@ fun PluginCall.requireLong(name: String): Long =
 
 fun PluginCall.requireAccount(): AccountConfig {
     val json = getObject("account") ?: throw MailException(MailErrorCode.INVALID_ARGUMENT, "Missing argument: account")
+    return accountFromJson(json)
+}
+
+fun accountFromJson(json: JSONObject): AccountConfig {
     return AccountConfig(
         id = json.requireString("id"),
         email = json.requireString("email"),
