@@ -141,3 +141,58 @@
 .page[hidden] {
   display: none;
 }
+
+/* --- Resizable list (PLAN.md 4.9) --------------------------------------------------------------- */
+
+.pane-divider {
+  display: none;
+}
+
+@media (min-width: 600px) {
+  .pane-divider {
+    position: absolute;
+    top: 0;
+    right: -6px;
+    bottom: 0;
+    z-index: 6;
+    display: block;
+    width: 12px;
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  .pane-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 4px;
+    width: 4px;
+    height: 48px;
+    margin-top: -24px;
+    border-radius: 2px;
+    background: var(--outline-variant);
+    opacity: 0;
+    transition: opacity var(--duration) var(--ease);
+  }
+
+  .pane-divider:hover::after,
+  .pane-divider:focus-visible::after,
+  .app--resizing .pane-divider::after {
+    opacity: 1;
+  }
+
+  .app--resizing {
+    cursor: col-resize;
+    user-select: none;
+  }
+
+  /* On tablets, compose is a large dialog over the panes rather than full screen. */
+  .page--compose {
+    inset: 5dvh max(var(--space-6), calc((100vw - 760px) / 2));
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow:
+      0 0 0 100vmax var(--scrim),
+      0 8px 32px rgb(0 0 0 / 0.3);
+  }
+}

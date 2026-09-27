@@ -18,7 +18,7 @@ import { countSearch, MARK_END, MARK_START, searchMessages } from '../search/sea
 import { searchServer } from '../search/server-search.js';
 import { countMessages, listMessages } from '../db/repo-messages.js';
 import { countThreads, listThreads, messageIdsInThreads, unreadIdsInThreads } from '../db/repo-threads.js';
-import { displayName, formatListDate } from '../util/format.js';
+import { displayName, formatListDate, formatSize } from '../util/format.js';
 import { VirtualList } from './components/virtual-list.js';
 import { attachPullToRefresh, attachRowGestures } from './components/gestures.js';
 
@@ -170,6 +170,7 @@ export function createMailboxView({
         <span class="message-row__avatar" aria-hidden="true">${selected ? icon('check') : initialOf(outgoing ? m.to[0] : m.from)}</span>
         <span class="message-row__from">${who}${count ? html` <span class="message-row__count">${count}</span>` : ''}</span>
         <span class="message-row__date">${formatListDate(m.dateReceived ?? m.dateSent)}</span>
+        <span class="message-row__size" aria-hidden="true">${formatSize(m.size ?? 0)}</span>
         <span class="message-row__subject">${m.subject || '(no subject)'}${showSnippet(m) ? html` <span class="message-row__snippet">— ${highlighted(m.searchSnippet)}</span>` : ''}</span>
         <span class="message-row__icons">
           ${m.hasAttachments ? icon('attach', 'Has attachments') : ''}
@@ -586,6 +587,31 @@ export function createMailboxView({
       renderBanners();
       renderEmpty(list.count);
     },
+    /**
+     * Opens the next (+1) or previous (-1) conversation, for keyboard
+     * shortcuts. Returns false when there's nothing there.
+     */
+    openAdjacent(delta) {
+      if (!route) return false;
+      let index = -1;
+      for (let i = 0; i < list.count; i++) {
+        const item = list.item(i);
+        if (item && String(item.openKey ?? item.id) === route.threadId) {
+          index = i;
+          break;
+        }
+      }
+      const targetIndex = index === -1 ? 0 : index + delta;
+      const target = list.item(targetIndex);
+      if (!target) return false;
+      router.navigate({ ...route, threadId: String(target.openKey ?? target.id) }, { replace: Boolean(route.threadId) });
+      const top = targetIndex * list.rowHeight;
+      if (top < body.scrollTop || top + list.rowHeight > body.scrollTop + body.clientHeight) {
+        body.scrollTop = top - body.clientHeight / 2;
+      }
+      return true;
+    },
+
     /** Threading switched on or off: rebuild the list. */
     modeChanged() {
       if (!route) return;

@@ -561,6 +561,22 @@ export function createThreadView({
   });
 
   return {
+    /** Keyboard shortcuts on the open conversation. Returns false if none is open. */
+    shortcut(action) {
+      if (!state) return false;
+      if (['archive', 'trash', 'unread', 'flag'].includes(action)) {
+        threadAction(action);
+        return true;
+      }
+      if (['reply', 'replyall', 'forward'].includes(action)) {
+        const outgoing = new Set(['sent', 'drafts']);
+        const target = state.messages.filter((m) => !outgoing.has(folderOf(m)?.role)).at(-1) ?? state.messages.at(-1);
+        onCompose({ name: 'compose', mode: action, id: String(target.id) });
+        return true;
+      }
+      return false;
+    },
+
     show(next) {
       const changed = next.threadId !== route?.threadId || next.folderId !== route?.folderId;
       route = next;

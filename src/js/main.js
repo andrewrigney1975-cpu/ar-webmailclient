@@ -2,7 +2,9 @@ import './views/components/dm-empty-state.js';
 import { createStore } from './store.js';
 import { loadListPrefs, loadSettings, saveSettings } from './settings.js';
 import { createRouter, UNIFIED_INBOX } from './router.js';
-import { isDrawerModal, watchWidthClass } from './layout.js';
+import { clampListWidth, isDrawerModal, listWidthForFold, watchWidthClass } from './layout.js';
+import { attachShortcuts, SHORTCUTS } from './shortcuts.js';
+import { Preferences } from '@capacitor/preferences';
 import { applyAccent, watchColorScheme } from './theme/theme.js';
 import { initPlatform, openExternal } from './platform.js';
 import { openDatabase } from './db/database.js';
@@ -324,11 +326,104 @@ async function refreshNotificationStatus() {
   if (store.get().route?.name === 'settings') renderSettings(page, { ...store.get(), notificationStatus });
 }
 
+// --- Adaptive layout (PLAN.md §4.9) ----------------------------------------------------------------
+
+const LIST_WIDTH_KEY = 'listWidth';
+let savedListWidth = Number((await Preferences.get({ key: LIST_WIDTH_KEY }).catch(() => ({}))).value) || null;
+let fold = null;
+
+/** The list width: along a foldable's hinge, else the user's, else the stylesheet default. */
+function applyListWidth() {
+  const { widthClass } = store.get();
+  const root = document.documentElement;
+  const hinge = listWidthForFold(fold, window.innerWidth, widthClass);
+  const width = hinge ?? (savedListWidth ? clampListWidth(savedListWidth, window.innerWidth, widthClass) : null);
+  if (width) root.style.setProperty('--list-width', `${width}px`);
+  else root.style.removeProperty('--list-width');
+  divider.setAttribute('aria-valuenow', String(Math.round(listPane.getBoundingClientRect().width)));
+}
+
+const divider = document.createElement('div');
+divider.className = 'pane-divider';
+divider.setAttribute('role', 'separator');
+divider.setAttribute('aria-orientation', 'vertical');
+divider.setAttribute('aria-label', 'Resize message list');
+divider.tabIndex = 0;
+listPane.append(divider);
+
+function setListWidth(width, { save = false } = {}) {
+  savedListWidth = clampListWidth(width, window.innerWidth, store.get().widthClass);
+  applyListWidth();
+  if (save) Preferences.set({ key: LIST_WIDTH_KEY, value: String(savedListWidth) }).catch(() => {});
+}
+
+divider.addEventListener('pointerdown', (event) => {
+  divider.setPointerCapture(event.pointerId);
+  app.classList.add('app--resizing');
+  const left = listPane.getBoundingClientRect().left;
+  const move = (e) => setListWidth(e.clientX - left);
+  const up = () => {
+    divider.removeEventListener('pointermove', move);
+    app.classList.remove('app--resizing');
+    setListWidth(listPane.getBoundingClientRect().width, { save: true });
+  };
+  divider.addEventListener('pointermove', move);
+  divider.addEventListener('pointerup', up, { once: true });
+  divider.addEventListener('pointercancel', up, { once: true });
+});
+divider.addEventListener('keydown', (event) => {
+  const step = { ArrowLeft: -24, ArrowRight: 24 }[event.key];
+  if (!step) return;
+  event.preventDefault();
+  setListWidth(listPane.getBoundingClientRect().width + step, { save: true });
+});
+divider.addEventListener('dblclick', () => {
+  savedListWidth = null;
+  Preferences.remove({ key: LIST_WIDTH_KEY }).catch(() => {});
+  applyListWidth();
+});
+
+// Sent by MainActivity (FoldWatcher) when a foldable's posture changes.
+window.addEventListener('despatchfold', (event) => {
+  fold = event.fold ?? null;
+  applyListWidth();
+});
+window.addEventListener('resize', applyListWidth);
+store.subscribe((state, previous) => {
+  if (state.widthClass !== previous.widthClass) applyListWidth();
+});
+
+attachShortcuts(document, (action) => {
+  const route = store.get().route;
+  if (route?.name !== 'mailbox') return false;
+  switch (action) {
+    case 'next':
+      return mailboxView.openAdjacent(1);
+    case 'previous':
+      return mailboxView.openAdjacent(-1);
+    case 'search':
+      router.navigate({ name: 'mailbox', folderId: 'search', threadId: null });
+      return true;
+    case 'compose':
+      router.navigate({ name: 'compose', mode: 'new', id: null });
+      return true;
+    case 'help':
+      chooseFromSheet(router, {
+        title: 'Keyboard shortcuts',
+        items: SHORTCUTS.map((s) => ({ value: null, label: `${s.keys.join(' or ')}  ·  ${s.label}` })),
+      });
+      return true;
+    default:
+      return threadView.shortcut(action);
+  }
+});
+
 // --- Start ---------------------------------------------------------------------------------------
 
 applyAccent(document.documentElement);
 watchColorScheme({ store });
 watchWidthClass({ root: app, store });
+applyListWidth();
 await loadAccounts();
 router.start();
 await initPlatform({

@@ -59,6 +59,7 @@ dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinxCoroutinesVersion"
     implementation "org.eclipse.angus:angus-mail:$angusMailVersion"
     implementation "androidx.work:work-runtime-ktx:$workVersion"
+    implementation "androidx.window:window:$windowVersion"
     implementation "jakarta.mail:jakarta.mail-api:$jakartaMailApiVersion"
     testImplementation "junit:junit:$junitVersion"
     testImplementation "com.icegreen:greenmail:$greenmailVersion"

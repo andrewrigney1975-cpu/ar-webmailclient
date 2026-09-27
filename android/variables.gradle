@@ -18,5 +18,6 @@ ext {
     greenmailVersion = '2.1.14'
     bouncyCastleVersion = '1.86'
     workVersion = '2.12.0'
+    windowVersion = '1.5.1'
     cordovaAndroidVersion = '14.0.1'
 }
