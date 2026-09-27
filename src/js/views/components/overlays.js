@@ -11,7 +11,7 @@ import { html, icon, render } from '../../html.js';
  * `finish`, so nothing depends on the dialog's own "close" event, which
  * browsers may defer while the page is hidden.
  */
-function openDialog(router, dialog, setup) {
+export function openDialog(router, dialog, setup) {
   return new Promise((resolve) => {
     let done = false;
     let unregister = () => {};

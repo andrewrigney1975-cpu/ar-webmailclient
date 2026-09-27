@@ -262,6 +262,10 @@ export class DespatchMailWeb extends WebPlugin {
     throw mailError('UNSUPPORTED', 'Opening attachments needs the Android app.');
   }
 
+  async saveToDownloads() {
+    throw mailError('UNSUPPORTED', 'Saving files needs the Android app.');
+  }
+
   async shareFile() {
     throw mailError('UNSUPPORTED', 'Sharing attachments needs the Android app.');
   }

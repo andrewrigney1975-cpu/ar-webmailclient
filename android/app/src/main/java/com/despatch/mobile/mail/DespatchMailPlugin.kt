@@ -13,6 +13,9 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import android.Manifest
 import android.provider.Settings
+import android.content.ContentValues
+import android.os.Environment
+import android.provider.MediaStore
 import androidx.core.app.NotificationManagerCompat
 import com.despatch.mobile.MainActivity
 import com.despatch.mobile.notify.BackgroundStore
@@ -243,13 +246,43 @@ class DespatchMailPlugin : Plugin() {
         null
     }
 
-    private fun cacheFileUri(path: String): Uri {
+    /**
+     * Copies a file from the app cache into Downloads (PLAN.md §4.7). Uses
+     * MediaStore, so no storage permission is needed.
+     */
+    @PluginMethod
+    fun saveToDownloads(call: PluginCall) = run(call) {
+        val source = cacheFile(call.requireString("path"))
+        val resolver = context.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, call.getString("filename") ?: source.name)
+            put(MediaStore.Downloads.MIME_TYPE, call.getString("mimeType") ?: "application/octet-stream")
+            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            put(MediaStore.Downloads.IS_PENDING, 1)
+        }
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: throw MailException(MailErrorCode.SERVER_ERROR, "Couldn’t create the file in Downloads.")
+        try {
+            resolver.openOutputStream(uri)?.use { out -> source.inputStream().use { it.copyTo(out) } }
+            resolver.update(uri, ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }, null, null)
+        } catch (error: Exception) {
+            resolver.delete(uri, null, null)
+            throw error
+        }
+        JSObject().put("uri", uri.toString())
+    }
+
+    /** A file inside the app cache; anything else is refused. */
+    private fun cacheFile(path: String): File {
         val file = File(path).canonicalFile
         if (!file.path.startsWith(context.cacheDir.canonicalPath + File.separator) || !file.isFile) {
             throw MailException(MailErrorCode.INVALID_ARGUMENT, "File not found.")
         }
-        return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        return file
     }
+
+    private fun cacheFileUri(path: String): Uri =
+        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", cacheFile(path))
 
     // --- Sending ---------------------------------------------------------------------------
 

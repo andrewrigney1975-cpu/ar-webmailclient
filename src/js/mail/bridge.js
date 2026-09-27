@@ -136,6 +136,9 @@ export function createMailApi(plugin) {
     /** Opens a downloaded attachment (a path from downloadAttachment) in another app. */
     openFile: (path, mimeType) => call('openFile', { path, mimeType }),
 
+    /** Copies a cached file into Downloads. */
+    saveToDownloads: (path, filename, mimeType) => call('saveToDownloads', { path, filename, mimeType }),
+
     /** Shares a downloaded attachment through the system share sheet. */
     shareFile: (path, mimeType, title) => call('shareFile', { path, mimeType, title }),
 

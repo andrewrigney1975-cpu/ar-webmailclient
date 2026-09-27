@@ -182,6 +182,17 @@ export const MIGRATIONS = [
       await tx.run("INSERT INTO app_meta (key, value) VALUES ('search', 'fts4')");
     },
   },
+  {
+    version: 6,
+    sql: `
+      -- Calendar suggestions the user dismissed (PLAN.md §4.7), per message and day.
+      CREATE TABLE dismissed_dates (
+        message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+        day INTEGER NOT NULL,
+        PRIMARY KEY (message_id, day)
+      );
+    `,
+  },
 ];
 
 export async function migrate(db, migrations = MIGRATIONS) {

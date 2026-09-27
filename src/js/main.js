@@ -141,6 +141,7 @@ const threadView = createThreadView({
   onError: showError,
   openExternal,
   onCompose: (route) => router.navigate(route),
+  router,
   dialogs: { pickFolder, confirmDeleteForever },
   onClose: () => {
     const route = store.get().lastMailboxRoute;

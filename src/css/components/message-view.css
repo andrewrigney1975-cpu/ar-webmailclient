@@ -261,3 +261,71 @@
 .message__frame--dark {
   background: var(--surface-dim);
 }
+
+/* --- Calendar suggestions (PLAN.md 4.7) ---------------------------------------------------------- */
+
+.date-suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 var(--space-3) var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--accent-container);
+  color: var(--on-accent-container);
+}
+
+.date-suggestion > .icon {
+  color: var(--accent-text);
+}
+
+.date-suggestion__text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  font-size: var(--text-sm);
+}
+
+.date-suggestion__text span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.event-editor {
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+.event-editor__form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.event-editor .dialog__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.event-editor textarea,
+.event-editor select {
+  padding: var(--space-2);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: inherit;
+}
+
+.field-row--times {
+  grid-template-columns: 1fr 1fr;
+}
+
+.field-row--times[hidden] {
+  display: none;
+}
+
+.event-editor__actions {
+  flex-wrap: wrap;
+}

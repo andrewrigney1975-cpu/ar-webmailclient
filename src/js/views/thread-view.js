@@ -15,6 +15,8 @@ import { isTrustedSender, trustSender } from '../db/repo-senders.js';
 import { messageIdsInThreads, threadMessages, unreadIdsInThreads } from '../db/repo-threads.js';
 import { buildFrameDocument, prepareHtml, splitPlainText } from '../mail/html-content.js';
 import { SEARCH, UNIFIED_INBOX } from '../router.js';
+import { dismissSuggestion, eventFromSuggestion, exportEvent, suggestionsFor } from '../calendar/calendar.js';
+import { editEvent } from './components/event-editor.js';
 import {
   displayName,
   formatAddressList,
@@ -42,6 +44,7 @@ export function createThreadView({
   onCompose,
   openExternal,
   dialogs,
+  router,
 }) {
   let route = null;
   let loadId = 0;
@@ -98,6 +101,7 @@ export function createThreadView({
       trusted,
       downloading: new Map(),
       inlineCache: new Map(),
+      suggestions: new Map(),
     };
     draw();
 
@@ -233,6 +237,7 @@ export function createThreadView({
           ${message.from ? html`<button class="text-button" type="button" data-card="trust-sender">Always from this sender</button>` : ''}
         </div>
       </div>
+      <div data-part="dates"></div>
       ${body}
       <div data-part="attachments">${loaded?.body ? attachmentList(message, loaded.body.attachments ?? []) : ''}</div>
     `;
@@ -267,7 +272,10 @@ export function createThreadView({
         </div>
       `,
     );
-    for (const m of state.messages) mountFrame(m.id);
+    for (const m of state.messages) {
+      mountFrame(m.id);
+      fillSuggestions(m.id);
+    }
   }
 
   function drawCard(id) {
@@ -277,6 +285,53 @@ export function createThreadView({
     card.classList.toggle('card--expanded', state.expanded.has(id));
     render(card, cardContent(message));
     mountFrame(id);
+    fillSuggestions(id);
+  }
+
+  // --- Calendar suggestions (PLAN.md §4.7) ----------------------------------------------------------------
+
+  function formatWhen(suggestion) {
+    const day = new Date(suggestion.start).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    if (suggestion.allDay) return day;
+    return `${day}, ${new Date(suggestion.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+  }
+
+  async function fillSuggestions(id) {
+    const message = state?.messages.find((m) => m.id === id);
+    const loaded = state?.bodies.get(id)?.body;
+    if (!message || !loaded || !state.expanded.has(id)) return;
+    const text = loaded.text ?? (loaded.html ? htmlToText(loaded.html) : '');
+    const suggestions = (await suggestionsFor(db, message, text)).slice(0, 2);
+    state.suggestions.set(id, suggestions);
+    const slot = element.querySelector(`[data-card-id="${id}"] [data-part=dates]`);
+    if (!slot) return;
+    render(
+      slot,
+      html`${suggestions.map(
+        (s, index) => html`<div class="date-suggestion">
+          ${icon('event')}
+          <div class="date-suggestion__text">
+            <strong>${formatWhen(s)}</strong>
+            <span>${s.title}</span>
+          </div>
+          <button class="text-button" type="button" data-card="add-event" data-index="${index}">Add to calendar</button>
+          <button class="icon-button" type="button" data-card="dismiss-date" data-index="${index}">${icon('close', 'Dismiss')}</button>
+        </div>`,
+      )}`,
+    );
+  }
+
+  async function addEvent(message, index) {
+    const suggestion = state.suggestions.get(message.id)?.[index];
+    if (!suggestion) return;
+    const result = await editEvent(router, eventFromSuggestion(suggestion, message));
+    if (!result) return;
+    try {
+      const done = await exportEvent(result.event, result.action, { mail });
+      if (done === 'save') snackbar.show('Saved to Downloads.');
+    } catch (error) {
+      onError(error);
+    }
   }
 
   function drawToolbar() {
@@ -444,8 +499,17 @@ export function createThreadView({
     }
   }
 
-  async function cardAction(action, message) {
+  async function cardAction(action, message, button) {
     switch (action) {
+      case 'add-event':
+        addEvent(message, Number(button.dataset.index));
+        break;
+      case 'dismiss-date': {
+        const suggestion = state.suggestions.get(message.id)?.[Number(button.dataset.index)];
+        if (suggestion) await dismissSuggestion(db, message.id, suggestion.start);
+        fillSuggestions(message.id);
+        break;
+      }
       case 'expand':
         state.expanded.add(message.id);
         drawCard(message.id);
@@ -489,7 +553,7 @@ export function createThreadView({
     if (!message) return;
     const cardButton = event.target.closest('[data-card]');
     if (cardButton) {
-      cardAction(cardButton.dataset.card, message);
+      cardAction(cardButton.dataset.card, message, cardButton);
       return;
     }
     const attachmentButton = event.target.closest('[data-attachment]');
