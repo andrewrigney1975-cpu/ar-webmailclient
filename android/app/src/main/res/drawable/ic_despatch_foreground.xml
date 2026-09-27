@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Launcher icon foreground: an envelope on its way (speed lines). -->
+<!-- Launcher icon foreground: the Despatch desktop app's open envelope. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:fillColor="#FFFFFF" android:pathData="M40,38h38a4,4 0 0 1 4,4v24a4,4 0 0 1 -4,4h-38a4,4 0 0 1 -4,-4v-24a4,4 0 0 1 4,-4z" />
-    <path
-        android:pathData="M39,41 L59,55 L79,41"
-        android:strokeColor="#3867D6"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-    <path
-        android:pathData="M22,46h9 M18,54h13 M24,62h7"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round" />
+    <!-- Drawn in the desktop app's 512-unit icon space, scaled into the 66 dp safe zone. -->
+    <group
+        android:scaleX="0.095"
+        android:scaleY="0.095"
+        android:translateX="29.68"
+        android:translateY="29.68">
+        <path android:fillColor="#39BCEA" android:pathData="M8,200 Q8,188 18,182 L244,14 Q256,6 268,14 L494,182 Q504,188 504,200 L504,480 L8,480 Z" />
+        <path android:fillColor="#E8EDF4" android:pathData="M116,50 L396,50 A22,22 0 0 1 418,72 L418,380 L94,380 L94,72 A22,22 0 0 1 116,50 Z" />
+        <path android:fillColor="#269DD4" android:pathData="M8,200 Q8,190 17,196 L256,373 L495,196 Q504,190 504,200 L504,480 Q504,500 484,500 L28,500 Q8,500 8,480 Z" />
+        <path android:fillColor="#39BCEA" android:pathData="M238,331 Q256,317 274,331 L497,495 Q503,500 490,503 L22,503 Q9,500 15,495 Z" />
+    </group>
 </vector>

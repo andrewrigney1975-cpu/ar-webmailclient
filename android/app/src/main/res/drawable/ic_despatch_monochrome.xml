@@ -1,19 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Themed-icon layer (Android tints it): the same shapes as outlines. -->
+<!-- Themed-icon layer (Android tints it): the same envelope as outlines. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:pathData="M40,38h38a4,4 0 0 1 4,4v24a4,4 0 0 1 -4,4h-38a4,4 0 0 1 -4,-4v-24a4,4 0 0 1 4,-4z M39,41 L59,55 L79,41"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-    <path
-        android:pathData="M22,46h9 M18,54h13 M24,62h7"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round" />
+    <!-- Drawn in the desktop app's 512-unit icon space, scaled into the 66 dp safe zone. -->
+    <group
+        android:scaleX="0.095"
+        android:scaleY="0.095"
+        android:translateX="29.68"
+        android:translateY="29.68">
+        <path
+            android:pathData="M94,126 L18,182 Q8,188 8,200 L8,480 Q8,500 28,500 L484,500 Q504,500 504,480 L504,200 Q504,188 494,182 L418,126 M196,50 L244,14 Q256,6 268,14 L316,50"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="30"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M20,490 L256,318 L492,490"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="30"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M8,196 L218,346 M504,196 L294,346"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="30"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M94,254 L94,72 Q94,50 116,50 L396,50 Q418,50 418,72 L418,254"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="30"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
 </vector>
