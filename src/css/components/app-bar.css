@@ -1,0 +1,47 @@
+.app-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: calc(var(--app-bar-height) + var(--inset-top));
+  padding: var(--inset-top) var(--space-1) 0;
+  flex: none;
+}
+
+.app-bar__title {
+  flex: 1;
+  min-width: 0;
+  padding-inline: var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: var(--accent-hover);
+}
+
+.icon-button:active {
+  background: var(--accent-pressed);
+}
+
+/* Only the compact thread view needs a back arrow. */
+@media (min-width: 600px) {
+  .pane--reading .app-bar__back {
+    display: none;
+  }
+}

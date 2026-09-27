@@ -1,0 +1,143 @@
+/*
+ * One DOM tree for every width class (see PLAN.md §4.9):
+ *   compact  < 600px   one pane; list and thread swap on selection
+ *   medium   600–839   list + reading pane; drawer is modal
+ *   expanded 840+      permanent drawer + list + reading pane
+ *   large    1200+     same as expanded, wider list
+ * Breakpoints must match WIDTH_CLASSES in js/layout.js.
+ */
+.app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'main';
+  height: 100dvh;
+  padding-left: var(--inset-left);
+  padding-right: var(--inset-right);
+}
+
+.pane {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.pane__body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: var(--inset-bottom);
+}
+
+/* Compact: show the reading pane only when a thread is selected. */
+@media (width < 600px) {
+  .app[data-has-thread] .pane--list,
+  .app:not([data-has-thread]) .pane--reading {
+    display: none;
+  }
+}
+
+/* Navigation drawer: modal by default. */
+.drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 20;
+  width: min(var(--drawer-width), 85vw);
+  padding: calc(var(--inset-top) + var(--space-3)) var(--space-3) var(--inset-bottom);
+  padding-left: calc(var(--inset-left) + var(--space-3));
+  background: var(--surface-dim);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition:
+    transform var(--duration) var(--ease),
+    visibility 0s var(--duration);
+  visibility: hidden;
+}
+
+.app[data-drawer-open] .drawer {
+  transform: none;
+  visibility: visible;
+  transition: transform var(--duration) var(--ease);
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  background: var(--scrim);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration) var(--ease);
+}
+
+.app[data-drawer-open] .scrim {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Medium: list + reading pane side by side. */
+@media (min-width: 600px) {
+  .app {
+    grid-template-columns: var(--list-width) minmax(0, 1fr);
+    grid-template-areas: 'list reading';
+  }
+
+  .pane--list {
+    grid-area: list;
+    border-right: 1px solid var(--outline-variant);
+  }
+
+  .pane--reading {
+    grid-area: reading;
+  }
+}
+
+/* Expanded: permanent drawer. */
+@media (min-width: 840px) {
+  .app {
+    grid-template-columns: var(--drawer-width) var(--list-width) minmax(0, 1fr);
+    grid-template-areas: 'drawer list reading';
+    padding-left: 0;
+  }
+
+  .drawer,
+  .app[data-drawer-open] .drawer {
+    grid-area: drawer;
+    position: static;
+    width: auto;
+    transform: none;
+    visibility: visible;
+    transition: none;
+    border-radius: 0;
+  }
+
+  .scrim,
+  .app-bar .app-bar__menu {
+    display: none;
+  }
+}
+
+/* Large: wider list for extra columns. */
+@media (min-width: 1200px) {
+  :root {
+    --list-width: 440px;
+  }
+}
+
+/* Full-screen pages (settings) sit above the panes. */
+.page {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  padding-left: var(--inset-left);
+  padding-right: var(--inset-right);
+}
+
+.page[hidden] {
+  display: none;
+}

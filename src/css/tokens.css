@@ -1,0 +1,64 @@
+/*
+ * Design tokens. Colours follow the system theme through `color-scheme` and
+ * `light-dark()`; `--accent` is overridden per account by theme.js.
+ */
+:root {
+  color-scheme: light dark;
+
+  /* Surfaces and text */
+  --surface: light-dark(#fdfcff, #121316);
+  --surface-dim: light-dark(#f2f1f6, #1a1b1f);
+  --surface-container: light-dark(#eceef4, #202227);
+  --surface-container-high: light-dark(#e4e6ed, #2a2c32);
+  --on-surface: light-dark(#1a1c20, #e3e2e7);
+  --on-surface-variant: light-dark(#44474e, #c4c6cf);
+  --outline: light-dark(#74777f, #8e9099);
+  --outline-variant: light-dark(#c4c6cf, #44474e);
+  --scrim: rgb(0 0 0 / 0.4);
+  --danger: light-dark(#ba1a1a, #ffb4ab);
+
+  /* Accent (per account). --on-accent is computed for contrast in theme.js. */
+  --accent: #3867d6;
+  --on-accent: #ffffff;
+  --accent-container: color-mix(in oklch, var(--accent) 18%, var(--surface));
+  --on-accent-container: color-mix(in oklch, var(--accent) 60%, var(--on-surface));
+  --accent-hover: color-mix(in oklch, var(--accent) 8%, transparent);
+  --accent-pressed: color-mix(in oklch, var(--accent) 14%, transparent);
+
+  /* Type */
+  --font: system-ui, 'Roboto', 'Segoe UI', sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.375rem;
+
+  /* Spacing, shape, motion */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 28px;
+  --app-bar-height: 64px;
+  --touch-target: 48px;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --duration: 200ms;
+
+  /* Layout */
+  --drawer-width: 320px;
+  --list-width: 360px;
+
+  /* Safe areas: Capacitor injects --safe-area-inset-*; env() is the fallback. */
+  --inset-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --inset-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --inset-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --inset-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration: 0ms;
+  }
+}
