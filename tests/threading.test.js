@@ -158,6 +158,27 @@ describe('threadNewMessages', () => {
     expect(await fx.threadOf('<b>')).toBe('other');
   });
 
+  it('uses a handful of statements for a large batch', async () => {
+    const fx = await fixture();
+    const batch = Array.from({ length: 200 }, (_, i) =>
+      envelope({ id: `<p${i}>`, references: i ? [`<p${Math.floor(i / 2)}>`] : [], date: i }),
+    );
+    await fx.db.transaction((tx) => saveEnvelopes(tx, fx.inbox, batch));
+
+    let statements = 0;
+    await fx.db.transaction(async (tx) => {
+      const counted = {
+        all: (...args) => (statements++, tx.all(...args)),
+        get: (...args) => (statements++, tx.get(...args)),
+        run: (...args) => (statements++, tx.run(...args)),
+      };
+      await threadNewMessages(counted, fx.account.id);
+    });
+
+    expect(statements).toBeLessThan(20);
+    expect(await fx.db.all('SELECT DISTINCT thread_id FROM messages')).toHaveLength(1);
+  });
+
   it('threads a whole mailbox in one pass', async () => {
     const fx = await fixture();
     const chain = Array.from({ length: 50 }, (_, i) =>

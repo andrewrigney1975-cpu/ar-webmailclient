@@ -10,11 +10,25 @@ function randomPassphrase() {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+const OPEN_ATTEMPTS = 5;
+
 export async function nativeDriver(name) {
   const sqlite = new SQLiteConnection(CapacitorSQLite);
 
   if (!(await sqlite.isSecretStored()).result) {
     await sqlite.setEncryptionSecret(randomPassphrase());
+  }
+
+  // After a WebView reload (not an app restart) the previous page's native
+  // connection is still open, possibly inside a transaction. Android can't
+  // close a connection mid-transaction, which would leave the file locked,
+  // so roll it back before the consistency check closes stale connections.
+  try {
+    if ((await CapacitorSQLite.isTransactionActive({ database: name, readonly: false })).result) {
+      await CapacitorSQLite.rollbackTransaction({ database: name, readonly: false });
+    }
+  } catch {
+    // No stale connection.
   }
 
   const consistent = (await sqlite.checkConnectionsConsistency()).result;
@@ -23,7 +37,16 @@ export async function nativeDriver(name) {
     consistent && exists
       ? await sqlite.retrieveConnection(name, false)
       : await sqlite.createConnection(name, true, 'secret', 1, false);
-  await connection.open();
+
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await connection.open();
+      break;
+    } catch (error) {
+      if (attempt === OPEN_ATTEMPTS || !/locked/i.test(error.message)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
+    }
+  }
 
   return {
     async all(sql, params) {
