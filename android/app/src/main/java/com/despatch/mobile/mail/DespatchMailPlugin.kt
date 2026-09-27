@@ -1,5 +1,9 @@
 package com.despatch.mobile.mail
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import androidx.core.content.FileProvider
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -157,6 +161,51 @@ class DespatchMailPlugin : Plugin() {
             call.requireString("destination"),
         )
         JSObject().put("newUids", JSArray().also { array -> newUids.forEach { array.put(it) } })
+    }
+
+    @PluginMethod
+    fun deleteMessages(call: PluginCall) = run(call) {
+        imap.deleteMessages(call.requireAccount(), call.requireString("path"), call.longList("uids"))
+        null
+    }
+
+    // --- Files -------------------------------------------------------------------------------
+
+    /** Opens a downloaded attachment in another app. Only files in the app cache are allowed. */
+    @PluginMethod
+    fun openFile(call: PluginCall) = run(call) {
+        val uri = cacheFileUri(call.requireString("path"))
+        val intent = Intent(Intent.ACTION_VIEW)
+            .setDataAndType(uri, call.getString("mimeType") ?: "application/octet-stream")
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            context.startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            throw MailException(MailErrorCode.NO_APP, "No app on this device can open this file.")
+        }
+        null
+    }
+
+    /** Shows the system share sheet for a downloaded attachment. */
+    @PluginMethod
+    fun shareFile(call: PluginCall) = run(call) {
+        val uri = cacheFileUri(call.requireString("path"))
+        val send = Intent(Intent.ACTION_SEND)
+            .setType(call.getString("mimeType") ?: "application/octet-stream")
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        context.startActivity(
+            Intent.createChooser(send, call.getString("title")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+        null
+    }
+
+    private fun cacheFileUri(path: String): Uri {
+        val file = File(path).canonicalFile
+        if (!file.path.startsWith(context.cacheDir.canonicalPath + File.separator) || !file.isFile) {
+            throw MailException(MailErrorCode.INVALID_ARGUMENT, "File not found.")
+        }
+        return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
     }
 
     // --- Sending ---------------------------------------------------------------------------

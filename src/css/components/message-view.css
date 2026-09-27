@@ -1,0 +1,116 @@
+.message {
+  padding: 0 var(--space-4) var(--space-6);
+}
+
+.message__subject {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.message__meta {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+  font-size: var(--text-sm);
+  color: var(--on-surface-variant);
+}
+
+.message__meta dt {
+  font-weight: 500;
+}
+
+.message__meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.message__remote {
+  margin: 0 0 var(--space-3);
+}
+
+.message__remote[hidden] {
+  display: none;
+}
+
+.message__remote .text-button {
+  margin-right: var(--space-2);
+}
+
+/* HTML mail is designed for a light background, so it keeps one in dark mode. */
+.message__frame {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: #fff;
+  color-scheme: light;
+}
+
+.message__text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.message__loading {
+  color: var(--on-surface-variant);
+}
+
+/* --- Attachments --------------------------------------------------------------------------------- */
+
+.attachments {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+}
+
+.attachment {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.attachment__open {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  grid-template-areas:
+    'icon name'
+    'icon size';
+  column-gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.attachment__open .icon {
+  grid-area: icon;
+  color: var(--accent);
+}
+
+.attachment__name {
+  grid-area: name;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.attachment__size {
+  grid-area: size;
+  font-size: var(--text-xs);
+  color: var(--on-surface-variant);
+}

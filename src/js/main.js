@@ -6,19 +6,19 @@ import { applyAccent, watchColorScheme } from './theme/theme.js';
 import { initPlatform, openExternal } from './platform.js';
 import { openDatabase } from './db/database.js';
 import { deleteAccount, listAccounts } from './db/repo-accounts.js';
-import { adjustUnreadCount, listFolders } from './db/repo-folders.js';
-import { getMessage, listMessages, saveBody, setLocalFlags } from './db/repo-messages.js';
+import { listFolders } from './db/repo-folders.js';
 import { mail } from './mail/bridge.js';
 import { discover } from './mail/autoconfig.js';
 import { getText } from './net/http.js';
 import { createSyncManager } from './mail/sync-manager.js';
+import { createMessageActions } from './mail/actions.js';
 import { addAccount } from './accounts/setup.js';
-import { htmlToText, snippetOf } from './util/format.js';
 import { renderDrawer } from './views/drawer.js';
-import { renderMailbox } from './views/mailbox.js';
-import { renderThread } from './views/thread.js';
+import { createMailboxView } from './views/mailbox.js';
+import { createMessageView } from './views/message-view.js';
 import { renderSettings } from './views/settings.js';
 import { createAccountSetupView } from './views/account-setup.js';
+import { chooseFromSheet, confirmDialog, createSnackbar } from './views/components/overlays.js';
 
 const app = document.getElementById('app');
 const drawer = document.getElementById('drawer');
@@ -39,16 +39,13 @@ const store = createStore({
   folders: [],
   sync: {},
   dataVersion: 0,
-  messages: [],
-  selected: null, // { message, body, bodyError }
   confirmRemoveId: null,
 });
 
 const db = await openDatabase();
 const syncManager = createSyncManager({ db, mail, store });
-
-// Development builds only: handles for debugging from the console.
-if (import.meta.env.DEV) window.despatch = { db, store, mail, syncManager };
+const actions = createMessageActions({ db, mail, store });
+const snackbar = createSnackbar(document.getElementById('snackbar'));
 
 const router = createRouter({
   onChange: (route) => {
@@ -58,71 +55,78 @@ const router = createRouter({
   },
 });
 
-// --- Data loading ------------------------------------------------------------------------------
+// Development builds only: handles for debugging from the console.
+if (import.meta.env.DEV) window.despatch = { db, store, mail, syncManager, actions, router };
+
+function showError(error) {
+  snackbar.show(error?.message ?? 'Something went wrong.');
+}
+
+// --- Dialogs shared by the list and the reading pane -------------------------------------------
+
+const ROLE_ICONS = { inbox: 'inbox', sent: 'send', drafts: 'draft', trash: 'delete', archive: 'archive', junk: 'report' };
+
+async function pickFolder(messages) {
+  const accountIds = new Set(messages.map((m) => m.accountId));
+  if (accountIds.size !== 1) {
+    snackbar.show('Select messages from one account to move them to a folder.');
+    return null;
+  }
+  const [accountId] = accountIds;
+  const current = new Set(messages.map((m) => m.folderId));
+  const items = store
+    .get()
+    .folders.filter((f) => f.accountId === accountId && f.selectable && !current.has(f.id))
+    .map((f) => ({
+      value: f,
+      label: f.role === 'inbox' ? 'Inbox' : f.name,
+      icon: ROLE_ICONS[f.role] ?? 'folder',
+      depth: f.role || !f.delimiter ? 0 : f.path.split(f.delimiter).length - 1,
+    }));
+  return chooseFromSheet(router, { title: 'Move to', items });
+}
+
+function confirmDeleteForever(count) {
+  return confirmDialog(router, {
+    title: count === 1 ? 'Delete this message forever?' : `Delete ${count} messages forever?`,
+    message: 'They will be removed from the server and can’t be recovered.',
+    confirm: 'Delete forever',
+    danger: true,
+  });
+}
+
+// --- Views ---------------------------------------------------------------------------------------
+
+const mailboxView = createMailboxView({
+  element: listPane,
+  db,
+  store,
+  router,
+  actions,
+  syncManager,
+  snackbar,
+  onError: showError,
+});
+mailboxView.setDialogs({ pickFolder, confirmDeleteForever });
+
+const messageView = createMessageView({
+  element: readingPane,
+  db,
+  store,
+  mail,
+  actions,
+  snackbar,
+  onError: showError,
+  openExternal,
+  dialogs: { pickFolder, confirmDeleteForever },
+  onClose: () => {
+    const route = store.get().lastMailboxRoute;
+    if (route?.threadId) router.navigate({ ...route, threadId: null }, { replace: true });
+  },
+});
 
 async function loadAccounts() {
   store.set({ accounts: await listAccounts(db), folders: await listFolders(db) });
-}
-
-function mailboxQuery(route) {
-  return route.folderId === UNIFIED_INBOX ? { unified: true } : { folderId: Number(route.folderId) };
-}
-
-async function loadMessages() {
-  const route = store.get().lastMailboxRoute;
-  if (!route) return;
-  const messages = await listMessages(db, mailboxQuery(route));
-  if (store.get().lastMailboxRoute === route) store.set({ messages });
-}
-
-/** Loads the selected message, fetching and caching its body, and marks it read. */
-async function loadSelected() {
-  const route = store.get().lastMailboxRoute;
-  const id = Number(route?.threadId);
-  if (!id) {
-    store.set({ selected: null });
-    return;
-  }
-  const message = await getMessage(db, id);
-  if (!message) {
-    store.set({ selected: null });
-    return;
-  }
-  const isCurrent = () => Number(store.get().lastMailboxRoute?.threadId) === id;
-  const cached = message.bodyFetchedAt ? message.bodyText ?? htmlToText(message.bodyHtml ?? '') : undefined;
-  store.set({ selected: { message, body: cached, bodyError: null } });
-
-  const { accounts, folders } = store.get();
-  const account = accounts.find((a) => a.id === message.accountId);
-  const folder = folders.find((f) => f.id === message.folderId);
-  if (!account || !folder) return;
-
-  if (!message.isRead) {
-    const flags = [...message.flags, '\\Seen'];
-    await setLocalFlags(db, id, flags);
-    await adjustUnreadCount(db, folder.id, -1);
-    store.set({ folders: await listFolders(db), dataVersion: store.get().dataVersion + 1 });
-    mail.setFlags(account, folder.path, [message.uid], { add: ['\\Seen'] }).catch(() => {
-      // The next sync reconciles flags with the server.
-    });
-  }
-
-  if (cached !== undefined) return;
-  try {
-    const body = await mail.fetchBody(account, folder.path, message.uid);
-    const text = body.text ?? (body.html ? htmlToText(body.html) : '');
-    await saveBody(db, id, { text: body.text, html: body.html, snippet: snippetOf(text) });
-    if (isCurrent()) store.set({ selected: { message, body: text, bodyError: null } });
-  } catch (error) {
-    if (isCurrent()) store.set({ selected: { message, body: undefined, bodyError: error.message } });
-  }
-}
-
-// --- Rendering ---------------------------------------------------------------------------------
-
-let unregisterDrawer = null;
-function setDrawerOpen(open) {
-  store.set({ drawerOpen: open });
 }
 
 const accountSetup = createAccountSetupView({
@@ -141,6 +145,13 @@ const accountSetup = createAccountSetupView({
     syncManager.syncAccount(account);
   },
 });
+
+// --- Rendering -----------------------------------------------------------------------------------
+
+let unregisterDrawer = null;
+function setDrawerOpen(open) {
+  store.set({ drawerOpen: open });
+}
 
 function renderApp(state, previous = {}) {
   const { route, drawerOpen, widthClass } = state;
@@ -175,40 +186,30 @@ function renderApp(state, previous = {}) {
   if (!mailboxRoute) return;
   app.toggleAttribute('data-has-thread', Boolean(mailboxRoute.threadId));
 
-  const listChanged = ['lastMailboxRoute', 'messages', 'accounts', 'sync', 'online', 'folders'].some(
-    (key) => state[key] !== previous[key],
-  );
-  if (listChanged) {
-    renderMailbox(listPane, { ...state, route: mailboxRoute, folder });
+  if (mailboxRoute !== previous.lastMailboxRoute) {
+    mailboxView.show(mailboxRoute);
+    messageView.show(mailboxRoute);
   }
-  if (state.selected !== previous.selected || mailboxRoute !== previous.lastMailboxRoute) {
-    const selected = state.selected?.message.id === Number(mailboxRoute.threadId) ? state.selected : null;
-    renderThread(readingPane, {
-      route: mailboxRoute,
-      message: selected?.message,
-      account: state.accounts.find((a) => a.id === selected?.message.accountId),
-      body: selected?.body,
-      bodyError: selected?.bodyError,
-    });
+  if (['accounts', 'sync', 'online', 'folders'].some((key) => state[key] !== previous[key])) {
+    mailboxView.statusChanged();
+  }
+  if (state.dataVersion !== previous.dataVersion || state.accounts !== previous.accounts) {
+    mailboxView.dataChanged();
+    messageView.dataChanged();
   }
 }
 
 store.subscribe(renderApp);
 
-// Reload data when what it depends on changes.
+// Opening a folder syncs it if it hasn't synced recently.
 store.subscribe((state, previous) => {
   const route = state.lastMailboxRoute;
-  const folderChanged = route?.folderId !== previous.lastMailboxRoute?.folderId;
-  if (folderChanged || state.dataVersion !== previous.dataVersion || state.accounts !== previous.accounts) {
-    loadMessages();
-  }
-  if (folderChanged && route && route.folderId !== UNIFIED_INBOX) {
+  if (route && route.folderId !== previous.lastMailboxRoute?.folderId && route.folderId !== UNIFIED_INBOX) {
     syncManager.syncFolderIfStale(Number(route.folderId));
   }
-  if (route?.threadId !== previous.lastMailboxRoute?.threadId) loadSelected();
 });
 
-// --- Actions -----------------------------------------------------------------------------------
+// --- Actions -------------------------------------------------------------------------------------
 
 async function removeAccount(accountId) {
   if (store.get().confirmRemoveId !== accountId) {
@@ -220,7 +221,7 @@ async function removeAccount(accountId) {
   await deleteAccount(db, accountId);
   store.set((state) => {
     const { [accountId]: _removed, ...sync } = state.sync;
-    return { sync, confirmRemoveId: null };
+    return { sync, confirmRemoveId: null, dataVersion: state.dataVersion + 1 };
   });
   await loadAccounts();
 }
@@ -234,15 +235,6 @@ document.addEventListener('click', (event) => {
     case 'back':
       router.back();
       break;
-    case 'refresh': {
-      const route = store.get().lastMailboxRoute;
-      if (route && route.folderId !== UNIFIED_INBOX) {
-        syncManager.syncFolderIfStale(Number(route.folderId), { force: true });
-      } else {
-        syncManager.syncAll();
-      }
-      break;
-    }
     case 'remove-account':
       removeAccount(target.dataset.accountId);
       break;
@@ -252,7 +244,7 @@ document.addEventListener('click', (event) => {
 });
 scrim.addEventListener('click', () => setDrawerOpen(false));
 
-// --- Start -------------------------------------------------------------------------------------
+// --- Start ---------------------------------------------------------------------------------------
 
 applyAccent(document.documentElement);
 watchColorScheme({ store });

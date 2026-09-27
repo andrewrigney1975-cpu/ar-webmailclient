@@ -1,40 +1,125 @@
-.message-list {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 var(--space-6);
+/* --- Virtualised list ------------------------------------------------------------------------- */
+
+.mailbox__body {
+  position: relative;
+  overscroll-behavior-y: contain;
 }
 
-/*
- *  [accent] From ................ Date
- *           Subject ............. icons
+.mailbox__empty:empty {
+  display: none;
+}
+
+.mailbox__empty {
+  position: absolute;
+  inset: 0;
+}
+
+.vlist {
+  position: relative;
+  contain: strict;
+  width: 100%;
+}
+
+.vlist__row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+/* Swipe backgrounds, revealed as the row slides. */
+.vlist__action {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-6);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.vlist__action--right {
+  background: #2e7d32;
+  justify-content: flex-start;
+}
+
+.vlist__action--left {
+  background: #c62828;
+  justify-content: flex-end;
+}
+
+.vlist__row[data-swipe='right'] .vlist__action--right,
+.vlist__row[data-swipe='left'] .vlist__action--left {
+  display: flex;
+}
+
+.vlist__row--armed .vlist__action .icon {
+  transform: scale(1.25);
+  transition: transform var(--duration) var(--ease);
+}
+
+/* --- Rows --------------------------------------------------------------------------------------
+
+ *  [avatar] From .............. Date
+ *           Subject ........... icons
  */
 .message-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'avatar from date'
+    'avatar subject icons';
   column-gap: var(--space-3);
-  padding: var(--space-3) var(--space-4) var(--space-3) calc(var(--space-4) + 4px);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
   color: var(--on-surface-variant);
   text-decoration: none;
-  border-bottom: 1px solid color-mix(in oklch, var(--outline-variant) 50%, transparent);
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-.message-row::before {
-  content: '';
-  position: absolute;
-  inset: var(--space-2) auto var(--space-2) var(--space-1);
-  width: 3px;
-  border-radius: 2px;
-  background: var(--row-accent);
-  opacity: 0.35;
+.message-row--placeholder {
+  height: 72px;
 }
 
 .message-row:hover {
-  background: var(--accent-hover);
+  background: color-mix(in oklch, var(--accent) 6%, var(--surface));
+}
+
+.message-row--current {
+  background: var(--accent-container);
 }
 
 .message-row--selected {
-  background: var(--accent-container);
+  background: color-mix(in oklch, var(--row-accent) 22%, var(--surface));
+}
+
+.message-row__avatar {
+  grid-area: avatar;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: color-mix(in oklch, var(--row-accent) 25%, var(--surface));
+  color: color-mix(in oklch, var(--row-accent) 70%, var(--on-surface));
+  font-weight: 600;
+}
+
+.message-row--selected .message-row__avatar {
+  background: var(--row-accent);
+  color: #fff;
+}
+
+.message-row__from {
+  grid-area: from;
+  color: var(--on-surface);
 }
 
 .message-row__from,
@@ -44,33 +129,27 @@
   text-overflow: ellipsis;
 }
 
-.message-row__from {
-  color: var(--on-surface);
-}
-
 .message-row__date {
+  grid-area: date;
   font-size: var(--text-xs);
-  align-self: center;
 }
 
 .message-row__subject {
+  grid-area: subject;
   font-size: var(--text-sm);
 }
 
 .message-row__icons {
+  grid-area: icons;
   display: flex;
   gap: var(--space-1);
-  align-items: center;
   justify-content: flex-end;
+  min-height: 16px;
 }
 
 .message-row__icons .icon {
   width: 16px;
   height: 16px;
-}
-
-.message-row--unread::before {
-  opacity: 1;
 }
 
 .message-row--unread .message-row__from,
@@ -80,51 +159,49 @@
   color: var(--on-surface);
 }
 
-/* Reading pane (plain text until milestone 3). */
-.message {
-  padding: 0 var(--space-4) var(--space-6);
+.message-row--unread::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--row-accent);
 }
 
-.message__subject {
-  margin-bottom: var(--space-3);
-  font-size: var(--text-lg);
-  font-weight: 400;
-  overflow-wrap: anywhere;
+/* --- App bar states ---------------------------------------------------------------------------- */
+
+.app-bar--selection {
+  background: var(--accent-container);
+  color: var(--on-accent-container);
 }
 
-.message__meta {
+.app-bar--selection .icon-button {
+  color: inherit;
+}
+
+/* --- Pull to refresh ----------------------------------------------------------------------------- */
+
+.pull-indicator {
+  position: absolute;
+  top: -44px;
+  left: 50%;
+  z-index: 2;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--space-1) var(--space-3);
-  margin: 0 0 var(--space-4);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--outline-variant);
-  font-size: var(--text-sm);
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-left: -20px;
+  border-radius: 50%;
+  background: var(--surface-container-high);
   color: var(--on-surface-variant);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
 }
 
-.message__meta dt {
-  font-weight: 500;
-}
-
-.message__meta dt .icon {
-  width: 16px;
-  height: 16px;
-}
-
-.message__meta dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.message__body {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-size: var(--text-md);
-}
-
-.message__loading {
-  color: var(--on-surface-variant);
+.pull-indicator--armed {
+  color: var(--accent);
 }
 
 /* Refresh button spins while syncing. */

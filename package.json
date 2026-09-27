@@ -24,6 +24,7 @@
     "@capacitor/keyboard": "^8.0.5",
     "@capacitor/network": "^8.0.1",
     "@capacitor/preferences": "^8.0.1",
+    "dompurify": "^3.4.16",
     "sql.js": "^1.14.2"
   },
   "devDependencies": {

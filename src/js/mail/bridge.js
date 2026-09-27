@@ -26,6 +26,8 @@ export const MailErrorCode = Object.freeze({
   MESSAGE_NOT_FOUND: 'MESSAGE_NOT_FOUND',
   RECIPIENT_REJECTED: 'RECIPIENT_REJECTED',
   INVALID_ARGUMENT: 'INVALID_ARGUMENT',
+  NO_APP: 'NO_APP',
+  UNSUPPORTED: 'UNSUPPORTED',
   SERVER_ERROR: 'SERVER_ERROR',
 });
 
@@ -110,6 +112,16 @@ export function createMailApi(plugin) {
 
     moveMessages: async (account, path, uids, destination) =>
       (await call('moveMessages', { account: toNativeAccount(account), path, uids, destination })).newUids,
+
+    /** Permanently deletes messages (\Deleted + expunge). Used for "Delete forever" in Trash. */
+    deleteMessages: (account, path, uids) =>
+      call('deleteMessages', { account: toNativeAccount(account), path, uids }),
+
+    /** Opens a downloaded attachment (a path from downloadAttachment) in another app. */
+    openFile: (path, mimeType) => call('openFile', { path, mimeType }),
+
+    /** Shares a downloaded attachment through the system share sheet. */
+    shareFile: (path, mimeType, title) => call('shareFile', { path, mimeType, title }),
 
     /**
      * Sends a message. With `sentFolder`, a copy is appended there; if that fails

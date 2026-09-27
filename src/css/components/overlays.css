@@ -1,0 +1,134 @@
+/* --- Snackbar ------------------------------------------------------------------------------------ */
+
+.snackbar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--inset-bottom) + var(--space-4));
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: min(560px, calc(100vw - 2 * var(--space-4)));
+  min-height: 48px;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: light-dark(#2f3033, #e3e2e7);
+  color: light-dark(#f1f0f4, #1a1c20);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
+  transform: translate(-50%, 150%);
+  opacity: 0;
+  transition:
+    transform var(--duration) var(--ease),
+    opacity var(--duration) var(--ease);
+  pointer-events: none;
+}
+
+.snackbar--visible {
+  transform: translate(-50%, 0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.snackbar__text {
+  flex: 1;
+  font-size: var(--text-sm);
+}
+
+.snackbar__action {
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: 20px;
+  background: none;
+  color: light-dark(#adc6ff, #3867d6);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* --- Bottom sheet -------------------------------------------------------------------------------- */
+
+.sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: 70dvh;
+  margin: auto auto 0;
+  padding: var(--space-4) 0 calc(var(--space-4) + var(--inset-bottom));
+  border: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+.sheet::backdrop,
+.dialog::backdrop {
+  background: var(--scrim);
+}
+
+.sheet__title {
+  padding: 0 var(--space-6) var(--space-2);
+  font-size: var(--text-md);
+  font-weight: 500;
+}
+
+.sheet__empty {
+  padding: var(--space-4) var(--space-6);
+  color: var(--on-surface-variant);
+}
+
+.sheet__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sheet__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: 52px;
+  padding: 0 var(--space-6) 0 calc(var(--space-6) + var(--depth, 0) * var(--space-4));
+  border: 0;
+  background: none;
+  text-align: left;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.sheet__item:hover {
+  background: var(--accent-hover);
+}
+
+.sheet__item .icon {
+  color: var(--on-surface-variant);
+}
+
+/* --- Dialog -------------------------------------------------------------------------------------- */
+
+.dialog {
+  width: min(400px, calc(100vw - 2 * var(--space-6)));
+  padding: var(--space-6) var(--space-6) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+
+.dialog__title {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: 400;
+}
+
+.dialog__message {
+  color: var(--on-surface-variant);
+  font-size: var(--text-sm);
+}
+
+.dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}

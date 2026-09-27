@@ -218,6 +218,19 @@ export class DespatchMailWeb extends WebPlugin {
     return { newUids };
   }
 
+  async deleteMessages({ account, path, uids }) {
+    const folder = this.#folder(account, path);
+    folder.messages = folder.messages.filter((m) => !uids.includes(m.uid));
+  }
+
+  async openFile() {
+    throw mailError('UNSUPPORTED', 'Opening attachments needs the Android app.');
+  }
+
+  async shareFile() {
+    throw mailError('UNSUPPORTED', 'Sharing attachments needs the Android app.');
+  }
+
   // --- Sending -------------------------------------------------------------------------------
 
   async send({ account, message, sentFolder }) {

@@ -250,6 +250,19 @@ class ImapService(private val passwords: PasswordSource) {
         List(messages.size) { index -> results?.getOrNull(index)?.uid }
     }
 
+    /**
+     * Permanently deletes messages: sets \Deleted and expunges. With UIDPLUS only
+     * these UIDs are expunged; without it, other \Deleted messages in the folder go too.
+     */
+    suspend fun deleteMessages(account: AccountConfig, path: String, uids: List<Long>) =
+        withFolder(account, path, Folder.READ_WRITE) { folder ->
+            val messages = folder.getMessagesByUID(uids.toLongArray()).filterNotNull().toTypedArray()
+            if (messages.isEmpty()) return@withFolder
+            folder.setFlags(messages, Flags(Flags.Flag.DELETED), true)
+            val store = folder.store as IMAPStore
+            if (store.hasCapability("UIDPLUS")) folder.expunge(messages) else folder.expunge()
+        }
+
     /** Appends a message (e.g. to Sent or Drafts) and returns its UID when the server reports it. */
     suspend fun append(account: AccountConfig, path: String, message: MimeMessage, flags: List<String>): Long? =
         withStore(account) { store ->

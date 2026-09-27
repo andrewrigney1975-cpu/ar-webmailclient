@@ -34,6 +34,11 @@ export function html(strings, ...values) {
   return raw(out);
 }
 
+/** The markup string of an `html` result. */
+export function markup(template) {
+  return template[RAW];
+}
+
 /** Replaces an element's content with an `html` result. */
 export function render(element, template) {
   element.innerHTML = template[RAW];

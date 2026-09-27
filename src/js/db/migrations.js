@@ -91,6 +91,19 @@ export const MIGRATIONS = [
       );
     `,
   },
+  {
+    version: 2,
+    sql: `
+      -- Senders whose remote images load automatically (PLAN.md §4.8).
+      CREATE TABLE trusted_senders (
+        address TEXT PRIMARY KEY COLLATE NOCASE,
+        added_at INTEGER NOT NULL
+      );
+
+      -- Attachment list saved with the cached body, so reading offline shows it.
+      ALTER TABLE messages ADD COLUMN attachments_json TEXT;
+    `,
+  },
 ];
 
 export async function migrate(db, migrations = MIGRATIONS) {

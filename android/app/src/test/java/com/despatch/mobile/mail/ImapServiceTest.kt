@@ -189,6 +189,17 @@ class ImapServiceTest {
     }
 
     @Test
+    fun deletesMessagesPermanently() = runBlocking<Unit> {
+        deliverSample()
+        val uids = imap.fetchEnvelopes(server.account, "INBOX", MessageQuery.Latest(10)).map { it.uid }
+
+        imap.deleteMessages(server.account, "INBOX", uids.take(2))
+
+        val remaining = imap.fetchEnvelopes(server.account, "INBOX", MessageQuery.Latest(10)).map { it.uid }
+        assertEquals(uids.drop(2), remaining)
+    }
+
+    @Test
     fun reconnectsWhenTheCachedConnectionDies() = runBlocking<Unit> {
         deliverSample()
         imap.folderStatus(server.account, "INBOX")

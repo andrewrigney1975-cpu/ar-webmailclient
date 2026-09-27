@@ -26,6 +26,7 @@ enum class MailErrorCode {
     MESSAGE_NOT_FOUND,
     RECIPIENT_REJECTED,
     INVALID_ARGUMENT,
+    NO_APP,
     SERVER_ERROR,
 }
 

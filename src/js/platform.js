@@ -25,7 +25,8 @@ export async function initPlatform({ router, store, onResume = () => {}, onOnlin
   if (!isNative) {
     // Browser development: Escape stands in for the Android back gesture.
     window.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') router.back();
+      // An open <dialog> handles Escape itself.
+      if (event.key === 'Escape' && !document.querySelector('dialog[open]')) router.back();
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') onResume();
