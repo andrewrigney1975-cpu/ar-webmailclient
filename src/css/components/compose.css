@@ -239,3 +239,48 @@ dm-address-input {
 .card__actions .text-button {
   border: 1px solid var(--outline-variant);
 }
+
+/*
+ * Recipient rows: top-aligned, so chips stay inside the row as it grows and
+ * the "To" label and Cc/Bcc button stay level with the first line. The text
+ * field shares the line with the chips and only wraps when there's no room.
+ */
+.compose__row:has(dm-address-input) {
+  align-items: flex-start;
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
+}
+
+.compose__row:has(dm-address-input) > .compose__label,
+.compose__row:has(dm-address-input) > .text-button {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+}
+
+.compose__row:has(dm-address-input) > .text-button {
+  min-height: 48px;
+  flex: none;
+}
+
+.address-input {
+  min-height: 48px;
+  padding: var(--space-1) 0;
+}
+
+.address-input__text {
+  flex: 1 1 5em;
+  min-width: 5em;
+}
+
+.chip {
+  min-width: 0;
+}
+
+/* Once there are chips, the empty text field folds away until the field is tapped, so no blank line is left under them. */
+.address-input:has(.chip):not(:focus-within) .address-input__text:placeholder-shown {
+  flex: 0 0 0;
+  min-width: 0;
+  width: 0;
+  padding: 0;
+}

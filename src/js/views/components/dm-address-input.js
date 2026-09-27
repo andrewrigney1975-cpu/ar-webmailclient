@@ -40,7 +40,7 @@ export class DmAddressInput extends HTMLElement {
         <span class="address-input__chips"></span>
         <input class="address-input__text" type="email" inputmode="email" autocomplete="off" autocapitalize="off"
           spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false"
-          aria-controls="${this.#listId}" aria-label="${this.getAttribute('label') ?? 'Recipients'}" multiple />
+          aria-controls="${this.#listId}" aria-label="${this.getAttribute('label') ?? 'Recipients'}" placeholder=" " multiple />
         <ul class="address-input__suggestions" id="${this.#listId}" role="listbox" hidden></ul>
       </div>`,
     );
