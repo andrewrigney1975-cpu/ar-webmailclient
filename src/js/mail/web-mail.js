@@ -154,6 +154,25 @@ export class DespatchMailWeb extends WebPlugin {
 
   async disconnect() {}
 
+  // Notifications are Android-only; in the browser these do nothing.
+  async configureBackgroundSync(config) {
+    this.backgroundConfig = config;
+  }
+
+  async markNotified() {}
+
+  async notificationStatus() {
+    return { permission: 'denied', enabled: false };
+  }
+
+  async openNotificationSettings() {
+    throw mailError('UNSUPPORTED', 'Notification settings need the Android app.');
+  }
+
+  async requestPermissions() {
+    return { notifications: 'denied' };
+  }
+
   async getDynamicColors() {
     return { colors: [] };
   }

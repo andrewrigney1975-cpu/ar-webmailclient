@@ -6,6 +6,10 @@ export const DEFAULT_SETTINGS = Object.freeze({
   threading: true,
   /** In dark mode, invert HTML mail instead of showing it on white (PLAN.md §4.8). */
   darkMessages: false,
+  /** How often the background check runs, in minutes (15 is the Android minimum). */
+  syncIntervalMinutes: 15,
+  /** Keep an IMAP IDLE connection open for instant notifications (PLAN.md §4.4). */
+  instantNotifications: false,
 });
 
 const KEY = 'settings';

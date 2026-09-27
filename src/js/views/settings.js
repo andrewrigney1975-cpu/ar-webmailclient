@@ -8,7 +8,16 @@ function status(sync) {
   return sync.lastSyncedAt ? `Synced ${formatFullDate(sync.lastSyncedAt)}` : 'Not synced yet';
 }
 
-export function renderSettings(element, { accounts, sync, confirmRemoveId, settings }) {
+function notificationSummary(status) {
+  if (!status) return 'Checking…';
+  if (status.permission === 'granted' && status.enabled) return 'On';
+  if (status.permission === 'prompt' || status.permission === 'prompt-with-rationale') return 'Not allowed yet';
+  return 'Blocked in Android settings';
+}
+
+export function renderSettings(element, { accounts, sync, confirmRemoveId, settings, notificationStatus }) {
+  const allowed = notificationStatus?.permission === 'granted' && notificationStatus?.enabled;
+  const askable = notificationStatus?.permission === 'prompt' || notificationStatus?.permission === 'prompt-with-rationale';
   render(
     element,
     html`
@@ -46,6 +55,38 @@ export function renderSettings(element, { accounts, sync, confirmRemoveId, setti
         <p class="settings__note">
           Removing an account deletes its saved mail and password from this device. Nothing is deleted on the server.
         </p>
+
+        <h2 class="settings__heading">Notifications</h2>
+        <div class="switch-row">
+          <span>
+            <span class="switch-row__label">New mail notifications: ${notificationSummary(notificationStatus)}</span>
+            <span class="switch-row__detail">Turn them on or off for each account on its page.</span>
+          </span>
+          ${askable
+            ? html`<button class="text-button" type="button" data-action="notification-permission">Allow</button>`
+            : html`<button class="text-button" type="button" data-action="notification-settings">${allowed ? 'Android settings' : 'Open settings'}</button>`}
+        </div>
+        <label class="switch-row">
+          <span>
+            <span class="switch-row__label">Check for new mail</span>
+            <span class="switch-row__detail">When the app isn’t open.</span>
+          </span>
+          <select class="settings__select" data-setting="syncIntervalMinutes">
+            ${[15, 30, 60, 180].map(
+              (minutes) => html`<option value="${minutes}" ${settings.syncIntervalMinutes === minutes ? 'selected' : ''}>
+                ${minutes < 60 ? `Every ${minutes} minutes` : minutes === 60 ? 'Every hour' : `Every ${minutes / 60} hours`}
+              </option>`,
+            )}
+          </select>
+        </label>
+        <label class="switch-row">
+          <span>
+            <span class="switch-row__label">Instant notifications</span>
+            <span class="switch-row__detail">Keeps a connection open so new mail shows at once. Uses more battery, and Android shows an ongoing notification.</span>
+          </span>
+          <input class="switch" type="checkbox" role="switch" data-action="toggle-setting" data-setting="instantNotifications"
+            ${settings.instantNotifications ? 'checked' : ''} />
+        </label>
 
         <h2 class="settings__heading">Reading</h2>
         <label class="switch-row">

@@ -10,6 +10,16 @@ import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
+import com.getcapacitor.annotation.Permission
+import android.Manifest
+import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
+import com.despatch.mobile.MainActivity
+import com.despatch.mobile.notify.BackgroundStore
+import com.despatch.mobile.notify.MailNotifier
+import com.despatch.mobile.notify.PushService
+import com.despatch.mobile.notify.SyncWorker
+import org.json.JSONArray
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -22,7 +32,10 @@ import java.io.File
  * between JS and the mail services; threading, sorting and rendering happen
  * in JS. The JS wrapper is src/js/mail/bridge.js.
  */
-@CapacitorPlugin(name = "DespatchMail")
+@CapacitorPlugin(
+    name = "DespatchMail",
+    permissions = [Permission(alias = "notifications", strings = [Manifest.permission.POST_NOTIFICATIONS])],
+)
 class DespatchMailPlugin : Plugin() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var credentials: CredentialStore
@@ -33,6 +46,30 @@ class DespatchMailPlugin : Plugin() {
         credentials = CredentialStore.forAndroid(context)
         imap = ImapService(credentials)
         smtp = SmtpService(credentials)
+        // The app may have been opened from a notification.
+        activity?.intent?.let(::forwardNotificationIntent)
+    }
+
+    override fun handleOnNewIntent(intent: Intent) {
+        super.handleOnNewIntent(intent)
+        forwardNotificationIntent(intent)
+    }
+
+    /** Tells JS which message a notification was for; kept until a listener is attached. */
+    private fun forwardNotificationIntent(intent: Intent) {
+        val action = when (intent.action) {
+            MainActivity.ACTION_OPEN_MESSAGE -> "open"
+            MainActivity.ACTION_REPLY -> "reply"
+            else -> return
+        }
+        val accountId = intent.getStringExtra(MailNotifier.EXTRA_ACCOUNT) ?: return
+        val data = JSObject()
+            .put("action", action)
+            .put("accountId", accountId)
+            .put("path", intent.getStringExtra(MailNotifier.EXTRA_PATH))
+            .put("uid", intent.getLongExtra(MailNotifier.EXTRA_UID, -1))
+        intent.action = null // handle once, not again on configuration changes
+        notifyListeners("notificationTapped", data, true)
     }
 
     override fun handleOnDestroy() {
@@ -234,6 +271,58 @@ class DespatchMailPlugin : Plugin() {
             }
         }
         result
+    }
+
+    // --- Notifications -----------------------------------------------------------------------
+
+    /**
+     * Hands the background checker (PLAN.md §4.4) the accounts to watch and
+     * schedules it; starts or stops instant (IDLE) mode.
+     * accounts: [{ account, notify, inboxPath, archivePath, accentColor }]
+     */
+    @PluginMethod
+    fun configureBackgroundSync(call: PluginCall) = run(call) {
+        val store = BackgroundStore(context)
+        store.accountsJson = (call.getArray("accounts") ?: JSONArray()).toString()
+        store.intervalMinutes = call.getInt("intervalMinutes") ?: 15
+        store.push = call.getBoolean("push") ?: false
+
+        val accounts = store.accounts
+        val notifier = MailNotifier(context)
+        accounts.forEach { notifier.ensureChannel(it) }
+        notifier.removeChannelsExcept(accounts.map { it.account.id }.toSet())
+
+        val watching = accounts.any { it.notify }
+        if (watching) SyncWorker.schedule(context, store.intervalMinutes) else SyncWorker.cancel(context)
+        if (watching && store.push) PushService.start(context) else PushService.stop(context)
+        null
+    }
+
+    /** The app has shown this account's inbox up to [uid]: don't notify those, and clear its notifications. */
+    @PluginMethod
+    fun markNotified(call: PluginCall) = run(call) {
+        val accountId = call.requireString("accountId")
+        val store = BackgroundStore(context)
+        NewMailChecker(imap, store).markSeen(accountId, call.requireLong("uidValidity"), call.requireLong("uid"))
+        MailNotifier(context).cancelAccount(accountId)
+        null
+    }
+
+    @PluginMethod
+    fun notificationStatus(call: PluginCall) = run(call) {
+        JSObject()
+            .put("permission", getPermissionState("notifications")?.toString()?.lowercase() ?: "prompt")
+            .put("enabled", NotificationManagerCompat.from(context).areNotificationsEnabled())
+    }
+
+    @PluginMethod
+    fun openNotificationSettings(call: PluginCall) = run(call) {
+        context.startActivity(
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+        null
     }
 
     // --- Theme ------------------------------------------------------------------------------

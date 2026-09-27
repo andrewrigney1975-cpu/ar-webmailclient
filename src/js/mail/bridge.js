@@ -86,6 +86,18 @@ export function createMailApi(plugin) {
 
     disconnect: (accountId) => call('disconnect', { accountId }),
 
+    // --- Notifications (native background checking, PLAN.md §4.4) ---
+
+    configureBackgroundSync: (config) => call('configureBackgroundSync', config),
+    markNotified: ({ accountId, uidValidity, uid }) => call('markNotified', { accountId, uidValidity, uid }),
+    /** { permission: 'granted' | 'denied' | 'prompt' | …, enabled } */
+    notificationStatus: () => call('notificationStatus', {}),
+    openNotificationSettings: () => call('openNotificationSettings', {}),
+    requestNotificationPermission: async () =>
+      (await plugin.requestPermissions({ permissions: ['notifications'] })).notifications,
+    /** Calls back with { action: 'open' | 'reply', accountId, path, uid } when a notification is tapped. */
+    addNotificationListener: (callback) => plugin.addListener('notificationTapped', callback),
+
     /** Material You wallpaper colours (empty in the browser). */
     getDynamicColors: async () => (await call('getDynamicColors', {})).colors,
 

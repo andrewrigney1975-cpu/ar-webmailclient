@@ -17,5 +17,6 @@ ext {
     jakartaMailApiVersion = '2.1.5'
     greenmailVersion = '2.1.14'
     bouncyCastleVersion = '1.86'
+    workVersion = '2.12.0'
     cordovaAndroidVersion = '14.0.1'
 }

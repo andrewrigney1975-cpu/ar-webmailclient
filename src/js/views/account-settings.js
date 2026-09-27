@@ -52,6 +52,14 @@ export function createAccountSettingsView({ element, db, store, mail, snackbar, 
             <textarea name="signature" rows="4">${a.signature ?? ''}</textarea>
           </label>
 
+          <label class="switch-row">
+            <span>
+              <span class="switch-row__label">Notify me about new mail</span>
+              <span class="switch-row__detail">For this account’s Inbox.</span>
+            </span>
+            <input class="switch" type="checkbox" role="switch" name="notify" ${a.notify ? 'checked' : ''} />
+          </label>
+
           <h2 class="settings__heading">Accent colour</h2>
           <div class="swatches" role="group" aria-label="Accent colour">${swatches(a.accentColor)}</div>
           <label class="field field--inline">
@@ -113,6 +121,7 @@ export function createAccountSettingsView({ element, db, store, mail, snackbar, 
     if (!accountId || !field.name) return;
     if (field.name === 'displayName') save({ displayName: field.value.trim() || null });
     if (field.name === 'signature') save({ signature: field.value.trim() || null });
+    if (field.name === 'notify') save({ notify: field.checked });
     if (field.name === 'customAccent' && isValidHex(field.value)) save({ accentColor: field.value }).then(draw);
   });
   element.addEventListener('click', (event) => {

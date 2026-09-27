@@ -22,6 +22,7 @@ import { renderSettings } from './views/settings.js';
 import { createAccountSetupView } from './views/account-setup.js';
 import { createComposeView } from './views/compose.js';
 import { createAccountSettingsView } from './views/account-settings.js';
+import { createNotifications } from './notify/notifications.js';
 import { chooseFromSheet, confirmDialog, createSnackbar } from './views/components/overlays.js';
 
 const app = document.getElementById('app');
@@ -64,6 +65,8 @@ const router = createRouter({
     store.set(changes);
   },
 });
+
+const notifications = createNotifications({ db, mail, store, router, syncManager, onError: (e) => console.warn(e) });
 
 // Development builds only: handles for debugging from the console.
 if (import.meta.env.DEV) window.despatch = { db, store, mail, syncManager, actions, router, outbox };
@@ -163,6 +166,7 @@ const accountSetup = createAccountSetupView({
     await loadAccounts();
     router.navigate({ name: 'mailbox', folderId: UNIFIED_INBOX, threadId: null }, { replace: true });
     syncManager.syncAccount(account);
+    notifications.requestPermissionOnce();
   },
 });
 
@@ -208,7 +212,7 @@ function renderApp(state, previous = {}) {
   if (previous.route?.name === 'account' && route !== previous.route) accountSettings.close();
   if (route.name === 'compose' && route !== previous.route) composeView.open(route);
   if (previous.route?.name === 'compose' && route !== previous.route) composeView.close();
-  if (route.name === 'settings') renderSettings(page, state);
+  if (route.name === 'settings') renderSettings(page, { ...state, notificationStatus });
   if (route.name === 'accountSetup' && previous.route?.name !== 'accountSetup') accountSetup.reset();
 
   const modalDrawer = isDrawerModal(widthClass);
@@ -288,17 +292,36 @@ document.addEventListener('click', (event) => {
     case 'remove-account':
       removeAccount(target.dataset.accountId);
       break;
-    case 'toggle-setting': {
-      const settings = { ...store.get().settings, [target.dataset.setting]: target.checked };
-      store.set({ settings });
-      saveSettings(settings).catch(showError);
+    case 'toggle-setting':
+      updateSetting(target.dataset.setting, target.checked);
       break;
-    }
+    case 'notification-settings':
+      notifications.openSystemSettings().catch(showError);
+      break;
+    case 'notification-permission':
+      notifications.requestPermission().then(refreshNotificationStatus).catch(showError);
+      break;
   }
   // Also covers tapping the current destination, where no hashchange fires.
   if (event.target.closest('.nav__item')) setDrawerOpen(false);
 });
 scrim.addEventListener('click', () => setDrawerOpen(false));
+document.addEventListener('change', (event) => {
+  const select = event.target.closest('select[data-setting]');
+  if (select) updateSetting(select.dataset.setting, Number(select.value));
+});
+
+function updateSetting(key, value) {
+  const settings = { ...store.get().settings, [key]: value };
+  store.set({ settings });
+  saveSettings(settings).catch(showError);
+}
+
+let notificationStatus = null;
+async function refreshNotificationStatus() {
+  notificationStatus = await notifications.status().catch(() => null);
+  if (store.get().route?.name === 'settings') renderSettings(page, { ...store.get(), notificationStatus });
+}
 
 // --- Start ---------------------------------------------------------------------------------------
 
@@ -313,6 +336,7 @@ await initPlatform({
   onResume: () => {
     syncManager.syncAll();
     outbox.process();
+    refreshNotificationStatus();
   },
   onOnline: () => {
     syncManager.syncAll();
@@ -322,3 +346,5 @@ await initPlatform({
 syncManager.start();
 await outbox.refresh();
 outbox.process();
+await notifications.start();
+refreshNotificationStatus();
