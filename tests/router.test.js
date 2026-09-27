@@ -33,6 +33,7 @@ describe('buildHash', () => {
       { name: 'settings' },
       { name: 'accountSetup' },
       { name: 'compose', mode: 'new', id: null },
+      { name: 'account', accountId: 'a b' },
       { name: 'compose', mode: 'replyall', id: '42' },
       { name: 'compose', mode: 'draft', id: 'd-1' },
     ];

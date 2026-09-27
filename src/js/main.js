@@ -21,6 +21,7 @@ import { createThreadView } from './views/thread-view.js';
 import { renderSettings } from './views/settings.js';
 import { createAccountSetupView } from './views/account-setup.js';
 import { createComposeView } from './views/compose.js';
+import { createAccountSettingsView } from './views/account-settings.js';
 import { chooseFromSheet, confirmDialog, createSnackbar } from './views/components/overlays.js';
 
 const app = document.getElementById('app');
@@ -31,6 +32,7 @@ const readingPane = document.getElementById('reading-pane');
 const page = document.getElementById('page');
 const setupPage = document.getElementById('setup-page');
 const composePage = document.getElementById('compose-page');
+const accountPage = document.getElementById('account-page');
 
 const store = createStore({
   route: null,
@@ -175,6 +177,16 @@ const composeView = createComposeView({
   onError: showError,
 });
 
+const accountSettings = createAccountSettingsView({
+  element: accountPage,
+  db,
+  store,
+  mail,
+  snackbar,
+  onSaved: loadAccounts,
+  onPasswordChanged: (account) => syncManager.syncAccount(account),
+});
+
 // --- Rendering -----------------------------------------------------------------------------------
 
 let unregisterDrawer = null;
@@ -191,6 +203,9 @@ function renderApp(state, previous = {}) {
   page.hidden = route.name !== 'settings';
   setupPage.hidden = route.name !== 'accountSetup';
   composePage.hidden = route.name !== 'compose';
+  accountPage.hidden = route.name !== 'account';
+  if (route.name === 'account' && route !== previous.route) accountSettings.open(route.accountId);
+  if (previous.route?.name === 'account' && route !== previous.route) accountSettings.close();
   if (route.name === 'compose' && route !== previous.route) composeView.open(route);
   if (previous.route?.name === 'compose' && route !== previous.route) composeView.close();
   if (route.name === 'settings') renderSettings(page, state);

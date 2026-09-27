@@ -40,3 +40,42 @@ describe('applyAccent', () => {
     expect(el.style.getPropertyValue('--accent')).toBe(DEFAULT_ACCENT);
   });
 });
+
+describe('readable accents', () => {
+  it('darkens light accents on light surfaces and lightens dark ones on dark surfaces', async () => {
+    const { readableAccent, SURFACES } = await import('../src/js/theme/theme.js');
+    for (const accent of ['#ffd600', '#20bf6b', '#3867d6', '#1b1b1b', '#fafafa']) {
+      expect(contrastRatio(readableAccent(accent, SURFACES.light), SURFACES.light)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(readableAccent(accent, SURFACES.dark), SURFACES.dark)).toBeGreaterThanOrEqual(4.5);
+    }
+    // Already readable colours are left alone.
+    expect(readableAccent('#1a4fbf', SURFACES.light)).toBe('#1a4fbf');
+  });
+
+  it('sets the text accent for both schemes', () => {
+    const el = document.createElement('div');
+    applyAccent(el, '#ffd600');
+    expect(el.style.getPropertyValue('--accent-text')).toMatch(/^light-dark\(#[0-9a-f]{6}, #[0-9a-f]{6}\)$/);
+  });
+});
+
+describe('account updates', () => {
+  it('changes only editable fields', async () => {
+    const { testDatabase, testAccount } = await import('./helpers.js');
+    const { insertAccount, listAccounts, updateAccount } = await import('../src/js/db/repo-accounts.js');
+    const db = await testDatabase();
+    const account = testAccount();
+    await insertAccount(db, account);
+    await updateAccount(db, account.id, { accentColor: '#20bf6b', signature: 'Cheers', email: 'hacked@x.io' });
+    const [saved] = await listAccounts(db);
+    expect(saved).toMatchObject({ accentColor: '#20bf6b', signature: 'Cheers', email: account.email });
+  });
+});
+
+describe('dark message frames', () => {
+  it('adds the inverting style only when asked', async () => {
+    const { buildFrameDocument } = await import('../src/js/mail/html-content.js');
+    expect(buildFrameDocument({ head: '', html: '' }, { appOrigin: 'x' })).not.toContain('invert(1)');
+    expect(buildFrameDocument({ head: '', html: '' }, { dark: true, appOrigin: 'x' })).toContain('invert(1)');
+  });
+});

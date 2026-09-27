@@ -6,6 +6,7 @@
  *   #/folder/:folderId/thread/:threadId list + selected thread
  *   #/settings                          settings page
  *   #/accounts/new                      add-account wizard
+ *   #/account/:id                       one account's settings
  *   #/compose                           new message
  *   #/compose/:mode/:id                 reply | replyall | forward (message id), or draft (draft id)
  *
@@ -36,6 +37,7 @@ export function parseHash(hash) {
   }
   if (parts[0] === 'settings' && parts.length === 1) return { name: 'settings' };
   if (parts[0] === 'accounts' && parts[1] === 'new' && parts.length === 2) return { name: 'accountSetup' };
+  if (parts[0] === 'account' && parts.length === 2) return { name: 'account', accountId: parts[1] };
   if (parts[0] === 'compose' && parts.length === 1) return { name: 'compose', mode: 'new', id: null };
   if (parts[0] === 'compose' && parts.length === 3 && COMPOSE_MODES.includes(parts[1])) {
     return { name: 'compose', mode: parts[1], id: parts[2] };
@@ -54,6 +56,8 @@ export function buildHash(route) {
       return '#/settings';
     case 'accountSetup':
       return '#/accounts/new';
+    case 'account':
+      return `#/account/${encodeURIComponent(route.accountId)}`;
     case 'compose':
       return route.mode && route.mode !== 'new'
         ? `#/compose/${route.mode}/${encodeURIComponent(route.id)}`
@@ -75,6 +79,8 @@ export function parentOf(route, lastMailbox) {
         return { name: 'mailbox', folderId: UNIFIED_INBOX, threadId: null };
       }
       return null;
+    case 'account':
+      return { name: 'settings' };
     case 'settings':
     case 'accountSetup':
     case 'compose':

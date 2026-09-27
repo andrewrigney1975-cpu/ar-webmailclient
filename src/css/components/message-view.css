@@ -97,7 +97,7 @@
 
 .attachment__open .icon {
   grid-area: icon;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .attachment__name {
@@ -255,4 +255,9 @@
   color: var(--on-surface-variant);
   border-left: 3px solid var(--outline-variant);
   padding-left: var(--space-3);
+}
+
+/* "Dark message backgrounds": the frame's content is inverted, so its own backdrop goes dark too. */
+.message__frame--dark {
+  background: var(--surface-dim);
 }

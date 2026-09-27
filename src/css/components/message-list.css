@@ -201,7 +201,7 @@
 }
 
 .pull-indicator--armed {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* Refresh button spins while syncing. */
@@ -300,12 +300,12 @@
 }
 
 .icon-button--active {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .sheet__heading {
   padding: var(--space-3) var(--space-6) var(--space-1);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--text-sm);
   font-weight: 500;
 }

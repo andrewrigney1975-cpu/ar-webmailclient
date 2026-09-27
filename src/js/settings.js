@@ -4,6 +4,8 @@ import { Preferences } from '@capacitor/preferences';
 export const DEFAULT_SETTINGS = Object.freeze({
   /** Group messages into conversations (PLAN.md §4.2). */
   threading: true,
+  /** In dark mode, invert HTML mail instead of showing it on white (PLAN.md §4.8). */
+  darkMessages: false,
 });
 
 const KEY = 'settings';

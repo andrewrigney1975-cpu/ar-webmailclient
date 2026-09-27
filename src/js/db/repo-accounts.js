@@ -57,6 +57,18 @@ export async function insertAccount(db, account) {
   );
 }
 
+const EDITABLE = { displayName: 'display_name', signature: 'signature', accentColor: 'accent_color', notify: 'notify' };
+
+/** Updates editable preferences: displayName, signature, accentColor, notify. */
+export async function updateAccount(db, accountId, patch) {
+  const entries = Object.entries(patch).filter(([key]) => key in EDITABLE);
+  if (entries.length === 0) return;
+  await db.run(
+    `UPDATE accounts SET ${entries.map(([key]) => `${EDITABLE[key]} = ?`).join(', ')} WHERE id = ?`,
+    [...entries.map(([, value]) => value), accountId],
+  );
+}
+
 export async function deleteAccount(db, accountId) {
   // Folders and messages go with it (ON DELETE CASCADE).
   await db.run('DELETE FROM accounts WHERE id = ?', [accountId]);

@@ -322,7 +322,10 @@ export function createThreadView({
 
     const showRemote = state.allowRemote.has(id) || state.trusted.has(message.from?.address);
     card.querySelector('[data-part=remote]').hidden = !prepared.hasRemoteContent || showRemote;
-    frame.srcdoc = buildFrameDocument(prepared, { allowRemote: showRemote });
+    const { settings, colorScheme } = store.get();
+    const dark = settings.darkMessages && colorScheme === 'dark';
+    frame.classList.toggle('message__frame--dark', dark);
+    frame.srcdoc = buildFrameDocument(prepared, { allowRemote: showRemote, dark });
     frame.addEventListener('load', () => fitFrame(frame), { once: true });
   }
 

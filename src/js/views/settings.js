@@ -23,13 +23,13 @@ export function renderSettings(element, { accounts, sync, confirmRemoveId, setti
             (account) => html`
               <li class="account-card" style="--account-accent: ${account.accentColor}">
                 <span class="account-card__dot" aria-hidden="true"></span>
-                <div class="account-card__text">
+                <a class="account-card__text" href="#/account/${encodeURIComponent(account.id)}">
                   <p class="account-card__email">${account.email}</p>
                   <p class="account-card__detail">${account.imap.host}</p>
                   <p class="account-card__status${sync[account.id]?.state === 'error' ? ' account-card__status--error' : ''}">
                     ${status(sync[account.id])}
                   </p>
-                </div>
+                </a>
                 <button
                   class="text-button${confirmRemoveId === account.id ? ' text-button--danger' : ''}"
                   type="button"
@@ -55,6 +55,14 @@ export function renderSettings(element, { accounts, sync, confirmRemoveId, setti
           </span>
           <input class="switch" type="checkbox" role="switch" data-action="toggle-setting" data-setting="threading"
             ${settings.threading ? 'checked' : ''} />
+        </label>
+        <label class="switch-row">
+          <span>
+            <span class="switch-row__label">Dark message backgrounds</span>
+            <span class="switch-row__detail">In dark mode, show emails with dark colours instead of on white.</span>
+          </span>
+          <input class="switch" type="checkbox" role="switch" data-action="toggle-setting" data-setting="darkMessages"
+            ${settings.darkMessages ? 'checked' : ''} />
         </label>
       </div>
     `,

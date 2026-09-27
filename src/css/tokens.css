@@ -20,6 +20,8 @@
   /* Accent (per account). --on-accent is computed for contrast in theme.js. */
   --accent: #3867d6;
   --on-accent: #ffffff;
+  /* The accent for text and icons on surfaces: adjusted by theme.js to reach 4.5:1 in each scheme. */
+  --accent-text: light-dark(#2f5bbf, #9ab6ff);
   --accent-container: color-mix(in oklch, var(--accent) 18%, var(--surface));
   --on-accent-container: color-mix(in oklch, var(--accent) 60%, var(--on-surface));
   --accent-hover: color-mix(in oklch, var(--accent) 8%, transparent);

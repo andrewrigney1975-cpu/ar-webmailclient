@@ -61,7 +61,7 @@
 }
 
 .compose__send {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .compose__attachments {
@@ -87,7 +87,7 @@
 }
 
 .compose__attachment .icon {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .compose__warning {

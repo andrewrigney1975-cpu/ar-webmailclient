@@ -100,7 +100,7 @@
   border: 0;
   border-radius: 20px;
   background: none;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;

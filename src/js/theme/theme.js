@@ -38,15 +38,49 @@ export function onColorFor(backgroundHex) {
     : '#000000';
 }
 
-export function applyAccent(element, hex = DEFAULT_ACCENT) {
-  let accent = hex;
+export function isValidHex(hex) {
   try {
-    parseHex(accent);
+    parseHex(hex);
+    return true;
   } catch {
-    accent = DEFAULT_ACCENT;
+    return false;
   }
+}
+
+function toHex({ r, g, b }) {
+  return `#${[r, g, b].map((c) => Math.round(c).toString(16).padStart(2, '0')).join('')}`;
+}
+
+function mix(hexA, hexB, amount) {
+  const a = parseHex(hexA);
+  const b = parseHex(hexB);
+  return toHex({ r: a.r + (b.r - a.r) * amount, g: a.g + (b.g - a.g) * amount, b: a.b + (b.b - a.b) * amount });
+}
+
+// Surface colours from tokens.css, for checking contrast.
+export const SURFACES = { light: '#fdfcff', dark: '#121316' };
+
+/**
+ * The accent adjusted for use as text on a surface: mixed towards black
+ * (light theme) or white (dark theme) just enough to reach `ratio`.
+ */
+export function readableAccent(accent, surface, ratio = 4.5) {
+  const toward = relativeLuminance(surface) > 0.5 ? '#000000' : '#ffffff';
+  for (let step = 0; step <= 20; step++) {
+    const candidate = mix(accent, toward, step / 20);
+    if (contrastRatio(candidate, surface) >= ratio) return candidate;
+  }
+  return toward;
+}
+
+export function applyAccent(element, hex = DEFAULT_ACCENT) {
+  const accent = isValidHex(hex) ? hex : DEFAULT_ACCENT;
   element.style.setProperty('--accent', accent);
   element.style.setProperty('--on-accent', onColorFor(accent));
+  element.style.setProperty(
+    '--accent-text',
+    `light-dark(${readableAccent(accent, SURFACES.light)}, ${readableAccent(accent, SURFACES.dark)})`,
+  );
 }
 
 /**

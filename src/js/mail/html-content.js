@@ -153,12 +153,19 @@ export function splitPlainText(text) {
   return { body, quote, signature };
 }
 
+// Inverts the page and turns images back, so designs keep their look with
+// dark backgrounds. Added after the message's own styles.
+const DARK_STYLE = `<style>
+  html { filter: invert(1) hue-rotate(180deg); background: #fff !important; }
+  img, video, picture, [style*="background-image"], [background] { filter: invert(1) hue-rotate(180deg); }
+</style>`;
+
 /**
  * Builds the srcdoc for the message frame. The CSP here narrows the app's own
  * policy: nothing may load except inline styles, data: and local images, and
  * remote images only when the user allowed them.
  */
-export function buildFrameDocument({ head, html }, { allowRemote = false, appOrigin = location.origin } = {}) {
+export function buildFrameDocument({ head, html }, { allowRemote = false, dark = false, appOrigin = location.origin } = {}) {
   const images = ["'self'", 'data:', 'blob:', appOrigin, allowRemote ? 'https: http:' : ''].filter(Boolean).join(' ');
   const csp = `default-src 'none'; img-src ${images}; style-src 'unsafe-inline'; font-src data:; media-src 'none'; form-action 'none'`;
   return `<!doctype html>
@@ -181,6 +188,7 @@ export function buildFrameDocument({ head, html }, { allowRemote = false, appOri
   details.despatch-quote[open] > summary { margin-bottom: 8px; }
 </style>
 ${head}
+${dark ? DARK_STYLE : ''}
 </head>
 <body>${html}</body>
 </html>`;
