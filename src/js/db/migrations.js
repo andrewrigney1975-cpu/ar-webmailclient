@@ -104,6 +104,25 @@ export const MIGRATIONS = [
       ALTER TABLE messages ADD COLUMN attachments_json TEXT;
     `,
   },
+  {
+    version: 3,
+    sql: `
+      -- Threading (PLAN.md §4.2): every Message-ID each message refers to
+      -- (References and In-Reply-To), so replies can find each other in either order.
+      CREATE TABLE message_refs (
+        account_id TEXT NOT NULL,
+        ref TEXT NOT NULL,
+        message_row_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE
+      );
+      CREATE INDEX message_refs_ref ON message_refs (account_id, ref);
+      CREATE INDEX message_refs_row ON message_refs (message_row_id);
+
+      ALTER TABLE messages ADD COLUMN subject_norm TEXT;
+      CREATE INDEX messages_account_message_id ON messages (account_id, message_id);
+      CREATE INDEX messages_account_subject ON messages (account_id, subject_norm, date_sent);
+      CREATE INDEX messages_folder_thread ON messages (folder_id, thread_id);
+    `,
+  },
 ];
 
 export async function migrate(db, migrations = MIGRATIONS) {

@@ -114,3 +114,145 @@
   font-size: var(--text-xs);
   color: var(--on-surface-variant);
 }
+
+/* --- Conversations ------------------------------------------------------------------------------- */
+
+.thread {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-6);
+}
+
+.thread__subject {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 0 var(--space-1) var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.thread__count,
+.message-row__count {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 0.45em;
+  border-radius: 999px;
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-align: center;
+}
+
+.card {
+  border-radius: var(--radius-md);
+  background: var(--surface-dim);
+  overflow: hidden;
+}
+
+.card--expanded {
+  padding-bottom: var(--space-3);
+}
+
+.card__summary,
+.card__header {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  column-gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--space-3);
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card__summary {
+  grid-template-areas:
+    'avatar from date'
+    'avatar snippet snippet';
+}
+
+.card__summary .message-row__avatar,
+.card__header .message-row__avatar {
+  grid-row: span 2;
+}
+
+.card__from {
+  font-weight: 500;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.card__snippet {
+  grid-column: 2 / -1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--text-sm);
+  color: var(--on-surface-variant);
+}
+
+.card__who {
+  min-width: 0;
+}
+
+.card__to {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--text-xs);
+  color: var(--on-surface-variant);
+}
+
+.card__date {
+  align-self: start;
+  font-size: var(--text-xs);
+  color: var(--on-surface-variant);
+}
+
+.card > .message__frame,
+.card > .message__text,
+.card > .message__fold,
+.card > .message__loading,
+.card > .banner,
+.card > [data-part='attachments'] {
+  margin-inline: var(--space-3);
+}
+
+.card > .banner {
+  margin-bottom: var(--space-3);
+}
+
+.message__fold {
+  margin-top: var(--space-3);
+}
+
+.message__fold > summary {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  list-style: none;
+}
+
+.message__fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.message__fold[open] > summary {
+  margin-bottom: var(--space-2);
+}
+
+.message__text--quote {
+  color: var(--on-surface-variant);
+  border-left: 3px solid var(--outline-variant);
+  padding-left: var(--space-3);
+}

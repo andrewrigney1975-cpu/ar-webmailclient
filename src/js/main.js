@@ -1,5 +1,6 @@
 import './views/components/dm-empty-state.js';
 import { createStore } from './store.js';
+import { loadSettings, saveSettings } from './settings.js';
 import { createRouter, UNIFIED_INBOX } from './router.js';
 import { isDrawerModal, watchWidthClass } from './layout.js';
 import { applyAccent, watchColorScheme } from './theme/theme.js';
@@ -15,7 +16,7 @@ import { createMessageActions } from './mail/actions.js';
 import { addAccount } from './accounts/setup.js';
 import { renderDrawer } from './views/drawer.js';
 import { createMailboxView } from './views/mailbox.js';
-import { createMessageView } from './views/message-view.js';
+import { createThreadView } from './views/thread-view.js';
 import { renderSettings } from './views/settings.js';
 import { createAccountSetupView } from './views/account-setup.js';
 import { chooseFromSheet, confirmDialog, createSnackbar } from './views/components/overlays.js';
@@ -40,6 +41,7 @@ const store = createStore({
   sync: {},
   dataVersion: 0,
   confirmRemoveId: null,
+  settings: await loadSettings(),
 });
 
 const db = await openDatabase();
@@ -109,7 +111,7 @@ const mailboxView = createMailboxView({
 });
 mailboxView.setDialogs({ pickFolder, confirmDeleteForever });
 
-const messageView = createMessageView({
+const threadView = createThreadView({
   element: readingPane,
   db,
   store,
@@ -188,14 +190,17 @@ function renderApp(state, previous = {}) {
 
   if (mailboxRoute !== previous.lastMailboxRoute) {
     mailboxView.show(mailboxRoute);
-    messageView.show(mailboxRoute);
+    threadView.show(mailboxRoute);
+  }
+  if (state.settings.threading !== previous.settings?.threading && previous.settings) {
+    mailboxView.modeChanged();
   }
   if (['accounts', 'sync', 'online', 'folders'].some((key) => state[key] !== previous[key])) {
     mailboxView.statusChanged();
   }
   if (state.dataVersion !== previous.dataVersion || state.accounts !== previous.accounts) {
     mailboxView.dataChanged();
-    messageView.dataChanged();
+    threadView.dataChanged();
   }
 }
 
@@ -238,6 +243,12 @@ document.addEventListener('click', (event) => {
     case 'remove-account':
       removeAccount(target.dataset.accountId);
       break;
+    case 'toggle-setting': {
+      const settings = { ...store.get().settings, [target.dataset.setting]: target.checked };
+      store.set({ settings });
+      saveSettings(settings).catch(showError);
+      break;
+    }
   }
   // Also covers tapping the current destination, where no hashchange fires.
   if (event.target.closest('.nav__item')) setDrawerOpen(false);

@@ -8,7 +8,7 @@ function status(sync) {
   return sync.lastSyncedAt ? `Synced ${formatFullDate(sync.lastSyncedAt)}` : 'Not synced yet';
 }
 
-export function renderSettings(element, { accounts, sync, confirmRemoveId }) {
+export function renderSettings(element, { accounts, sync, confirmRemoveId, settings }) {
   render(
     element,
     html`
@@ -46,6 +46,16 @@ export function renderSettings(element, { accounts, sync, confirmRemoveId }) {
         <p class="settings__note">
           Removing an account deletes its saved mail and password from this device. Nothing is deleted on the server.
         </p>
+
+        <h2 class="settings__heading">Reading</h2>
+        <label class="switch-row">
+          <span>
+            <span class="switch-row__label">Group into conversations</span>
+            <span class="switch-row__detail">Show replies together, including your own from Sent.</span>
+          </span>
+          <input class="switch" type="checkbox" role="switch" data-action="toggle-setting" data-setting="threading"
+            ${settings.threading ? 'checked' : ''} />
+        </label>
       </div>
     `,
   );

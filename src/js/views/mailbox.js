@@ -1,10 +1,16 @@
 /**
  * The message list pane: app bar (or selection bar), status banners,
  * pull-to-refresh, and a virtualised list with swipe and long-press.
+ *
+ * Rows are conversations when threading is on, otherwise single messages.
+ * Either way a row's `id` is a conversation key ("m:<id>" for a single
+ * message), which is also the route's threadId; actions turn keys into the
+ * message IDs in the current folder.
  */
 import { html, icon, markup, render } from '../html.js';
 import { buildHash, UNIFIED_INBOX } from '../router.js';
 import { countMessages, listMessages } from '../db/repo-messages.js';
+import { countThreads, listThreads, messageIdsInThreads, unreadIdsInThreads } from '../db/repo-threads.js';
 import { displayName, formatListDate } from '../util/format.js';
 import { VirtualList } from './components/virtual-list.js';
 import { attachPullToRefresh, attachRowGestures } from './components/gestures.js';
@@ -40,11 +46,37 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
   const folderOf = (message) => store.get().folders.find((f) => f.id === message.folderId);
   const accountOf = (message) => store.get().accounts.find((a) => a.id === message.accountId);
   const query = () => (route.folderId === UNIFIED_INBOX ? { unified: true } : { folderId: Number(route.folderId) });
+  const threading = () => store.get().settings.threading;
+  const isMe = (person) => store.get().accounts.some((a) => a.email === person?.address?.toLowerCase());
+
+  function asRow(message) {
+    return { ...message, id: `m:${message.id}`, messageId: message.id, thread: null };
+  }
+
+  async function fetchPage(offset, limit) {
+    if (threading()) return listThreads(db, { ...query(), offset, limit });
+    return (await listMessages(db, { ...query(), offset, limit })).map(asRow);
+  }
+
+  /** Message IDs in the current folder for these row keys. */
+  async function messageIds(keys) {
+    const single = keys.filter((k) => k.startsWith('m:')).map((k) => Number(k.slice(2)));
+    const threads = keys.filter((k) => !k.startsWith('m:'));
+    return [...single, ...(await messageIdsInThreads(db, threads, query()))];
+  }
+
+  function participants(row) {
+    const people = row.thread?.participants ?? [];
+    if (people.length === 0) return displayName(row.from);
+    const names = people.map((p) => (isMe(p) ? 'me' : displayName(p).split(/[\s@]/)[0]));
+    return names.length > 3 ? `${names[0]} … ${names.slice(-2).join(', ')}` : names.join(', ');
+  }
 
   function renderRow(m) {
     const folder = folderOf(m);
     const outgoing = folder?.role === 'sent' || folder?.role === 'drafts';
-    const who = outgoing ? `To: ${m.to.map(displayName).join(', ') || '(no recipients)'}` : displayName(m.from);
+    const who = outgoing ? `To: ${m.to.map(displayName).join(', ') || '(no recipients)'}` : participants(m);
+    const count = m.thread?.count > 1 ? m.thread.count : 0;
     const selected = selection.has(m.id);
     const classes = [
       'message-row',
@@ -59,7 +91,7 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
          style="--row-accent: ${accountOf(m)?.accentColor ?? 'var(--accent)'}"
          aria-selected="${selection.size ? String(selected) : 'false'}">
         <span class="message-row__avatar" aria-hidden="true">${selected ? icon('check') : initialOf(outgoing ? m.to[0] : m.from)}</span>
-        <span class="message-row__from">${who}</span>
+        <span class="message-row__from">${who}${count ? html` <span class="message-row__count">${count}</span>` : ''}</span>
         <span class="message-row__date">${formatListDate(m.dateReceived ?? m.dateSent)}</span>
         <span class="message-row__subject">${m.subject || '(no subject)'}</span>
         <span class="message-row__icons">
@@ -73,7 +105,7 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
   const list = new VirtualList({
     scroller: body,
     renderRow,
-    fetchPage: (offset, limit) => listMessages(db, { ...query(), offset, limit }),
+    fetchPage,
   });
 
   function messageFor(row) {
@@ -91,8 +123,8 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
         left: role !== 'trash' ? 'trash' : undefined,
       };
     },
-    onSwipe: (row, action) => runAction(action, [Number(row.dataset.id)]),
-    onLongPress: (row) => toggleSelection(Number(row.dataset.id)),
+    onSwipe: async (row, action) => runAction(action, await messageIds([row.dataset.id])),
+    onLongPress: (row) => toggleSelection(row.dataset.id),
     onActive: (active) => {
       list.paused = active;
       if (!active) list.schedule();
@@ -104,7 +136,7 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
     const row = event.target.closest('.vlist__row[data-id]');
     if (!row || selection.size === 0) return;
     event.preventDefault();
-    toggleSelection(Number(row.dataset.id));
+    toggleSelection(row.dataset.id);
   });
 
   attachPullToRefresh(body, body.querySelector('.pull-indicator'), () => refreshFromServer());
@@ -157,13 +189,22 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
   }
 
   async function runSelectionAction(action) {
-    const ids = [...selection];
-    const messages = list.loadedItems().filter((m) => selection.has(m.id));
+    const keys = [...selection];
+    const rows = list.loadedItems().filter((m) => selection.has(m.id));
+    const newest = rows.map((r) => r.messageId);
     try {
-      if (action === 'read') await actions.markRead(ids, messages.some((m) => !m.isRead));
-      else if (action === 'flag') await actions.setFlagged(ids, messages.some((m) => !m.isFlagged));
-      else if (action === 'move') {
-        const folder = await pickFolder(messages);
+      const ids = await messageIds(keys);
+      if (action === 'read') {
+        // Reading marks the whole conversation; unread marks just its newest message.
+        const markRead = rows.some((r) => !r.isRead);
+        const threadKeys = keys.filter((k) => !k.startsWith('m:'));
+        const targets = markRead ? [...ids, ...(await unreadIdsInThreads(db, threadKeys))] : newest;
+        await actions.markRead([...new Set(targets)], markRead);
+      } else if (action === 'flag') {
+        const flag = rows.some((r) => !r.isFlagged);
+        await actions.setFlagged(flag ? newest : ids, flag);
+      } else if (action === 'move') {
+        const folder = await pickFolder(rows);
         if (!folder) return;
         setSelection(new Set());
         await runAction('move', ids, { folder });
@@ -285,7 +326,7 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
 
   async function reload({ reset }) {
     const current = route;
-    const count = await countMessages(db, query());
+    const count = threading() ? await countThreads(db, query()) : await countMessages(db, query());
     if (current !== route) return;
     if (reset) list.reset(count);
     else list.refresh(count);
@@ -320,6 +361,12 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
       renderBar();
       renderBanners();
       renderEmpty(list.count);
+    },
+    /** Threading switched on or off: rebuild the list. */
+    modeChanged() {
+      if (!route) return;
+      setSelection(new Set());
+      reload({ reset: true });
     },
     setDialogs(dialogs) {
       pickFolder = dialogs.pickFolder;

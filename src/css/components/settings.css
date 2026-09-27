@@ -70,3 +70,62 @@
   font-size: var(--text-sm);
   color: var(--on-surface-variant);
 }
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  cursor: pointer;
+}
+
+.switch-row__label {
+  display: block;
+  font-weight: 500;
+}
+
+.switch-row__detail {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--on-surface-variant);
+}
+
+/* Material-style switch from a checkbox. */
+.switch {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 52px;
+  height: 32px;
+  margin: 0;
+  border: 2px solid var(--outline);
+  border-radius: 16px;
+  background: var(--surface-container-high);
+  cursor: pointer;
+  transition: background var(--duration) var(--ease);
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--outline);
+  transition: transform var(--duration) var(--ease);
+}
+
+.switch:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.switch:checked::after {
+  transform: translateX(20px) scale(1.5);
+  background: var(--on-accent);
+}

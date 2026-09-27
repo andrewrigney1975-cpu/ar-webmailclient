@@ -17,13 +17,51 @@ const FORBID_ATTR = ['srcset', 'ping', 'formaction', 'action'];
 const REMOTE_URL = /^\s*(https?:)?\/\//i;
 const CSS_REMOTE_URL = /url\(\s*['"]?\s*(https?:)?\/\//i;
 
+// Where the quoted part of a reply starts, per mail client. Markers that are
+// a header rather than a container fold themselves and everything after them.
+const QUOTE_CONTAINERS = ['.gmail_quote', 'blockquote[type="cite"]', '.yahoo_quoted', '.protonmail_quote'];
+const QUOTE_MARKERS = ['#divRplyFwdMsg', '#appendonsend', '.moz-cite-prefix'];
+
+/**
+ * Wraps the quoted part of a reply in a collapsed <details>. Only when
+ * something comes before it, so a plain forward isn't hidden entirely.
+ */
+function foldQuote(doc) {
+  const container = doc.body.querySelector(QUOTE_CONTAINERS.join(','));
+  const marker = doc.body.querySelector(QUOTE_MARKERS.join(','));
+  const first = [container, marker]
+    .filter(Boolean)
+    .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))[0];
+  if (!first) return false;
+
+  const range = doc.createRange();
+  range.setStart(doc.body, 0);
+  range.setEndBefore(first);
+  if (!range.toString().trim()) return false;
+
+  const details = doc.createElement('details');
+  details.className = 'despatch-quote';
+  const summary = doc.createElement('summary');
+  summary.textContent = 'Show quoted text';
+  details.append(summary);
+
+  first.parentNode.insertBefore(details, first);
+  if (first === marker) {
+    while (details.nextSibling) details.append(details.nextSibling);
+  } else {
+    details.append(first);
+  }
+  return true;
+}
+
 /**
  * @param {string} html  raw message HTML
  * @param {object} options
  * @param {Map<string, string>} [options.inlineImages]  Content-ID → local URL
- * @returns {{ html: string, hasRemoteContent: boolean }}
+ * @param {boolean} [options.foldQuotes]  collapse the quoted part of replies
+ * @returns {{ html: string, head: string, hasRemoteContent: boolean }}
  */
-export function prepareHtml(html, { inlineImages = new Map() } = {}) {
+export function prepareHtml(html, { inlineImages = new Map(), foldQuotes = false } = {}) {
   const doc = DOMPurify.sanitize(html, {
     WHOLE_DOCUMENT: true,
     RETURN_DOM: true,
@@ -64,7 +102,55 @@ export function prepareHtml(html, { inlineImages = new Map() } = {}) {
     link.removeAttribute('target');
   }
 
+  if (foldQuotes) foldQuote(doc);
+
   return { html: doc.body.innerHTML, head: doc.head.innerHTML, hasRemoteContent };
+}
+
+const ATTRIBUTION = [
+  /^On .{4,200} wrote:\s*$/,
+  /^Am .{4,200} schrieb .{1,100}:\s*$/,
+  /^Le .{4,200} a écrit\s*:\s*$/,
+  /^El .{4,200} escribió:\s*$/,
+  /^Op .{4,200} schreef .{1,100}:\s*$/,
+  /^-{2,}\s*Original Message\s*-{2,}\s*$/i,
+  /^-{2,}\s*Forwarded message\s*-{2,}\s*$/i,
+  // Outlook-style header block; only counts when followed by Sent: or Date:.
+  /^From: .+$/,
+];
+
+/**
+ * Splits a plain-text body into what the sender wrote, the quoted reply
+ * history, and the signature ("-- " delimiter, RFC 3676).
+ */
+export function splitPlainText(text) {
+  const lines = (text ?? '').replace(/\r\n?/g, '\n').split('\n');
+
+  let quoteStart = lines.findIndex((line, i) => {
+    const trimmed = line.trim();
+    if (!ATTRIBUTION.some((pattern) => pattern.test(trimmed))) return false;
+    if (trimmed.startsWith('From: ')) return /^(Sent|Date): /.test(lines[i + 1]?.trim() ?? '');
+    return true;
+  });
+  // Otherwise, a block of "> " lines running to the end.
+  if (quoteStart === -1) {
+    let i = lines.length - 1;
+    while (i >= 0 && !lines[i].trim()) i--;
+    while (i >= 0 && (lines[i].startsWith('>') || !lines[i].trim())) {
+      if (lines[i].startsWith('>')) quoteStart = i;
+      i--;
+    }
+  }
+  if (quoteStart === 0) quoteStart = -1; // all quote: nothing to fold
+
+  const main = quoteStart > 0 ? lines.slice(0, quoteStart) : lines;
+  const quote = quoteStart > 0 ? lines.slice(quoteStart).join('\n').trim() : '';
+
+  const signatureStart = main.lastIndexOf('-- ');
+  const body = (signatureStart > 0 ? main.slice(0, signatureStart) : main).join('\n').trim();
+  const signature = signatureStart > 0 ? main.slice(signatureStart + 1).join('\n').trim() : '';
+
+  return { body, quote, signature };
 }
 
 /**
@@ -86,6 +172,13 @@ export function buildFrameDocument({ head, html }, { allowRemote = false, appOri
   body { margin: 0; padding: 16px; font: 15px/1.5 system-ui, Roboto, sans-serif; overflow-wrap: anywhere; }
   img { max-width: 100%; height: auto; }
   pre { white-space: pre-wrap; }
+  details.despatch-quote { margin-top: 12px; }
+  details.despatch-quote > summary {
+    display: inline-block; padding: 2px 10px; border-radius: 12px; background: #e8eaf0;
+    color: #44474e; font: 13px system-ui, sans-serif; cursor: pointer; list-style: none;
+  }
+  details.despatch-quote > summary::-webkit-details-marker { display: none; }
+  details.despatch-quote[open] > summary { margin-bottom: 8px; }
 </style>
 ${head}
 </head>

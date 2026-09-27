@@ -11,6 +11,7 @@
 import { replaceFolders, updateFolderSyncState } from '../db/repo-folders.js';
 import { clearFolder, deleteUids, knownUids, saveEnvelopes, updateFlags } from '../db/repo-messages.js';
 import { recordContacts } from '../db/repo-contacts.js';
+import { threadNewMessages } from './threading.js';
 
 export const INITIAL_SYNC_COUNT = 200;
 
@@ -77,6 +78,9 @@ export async function syncFolder({ db, mail, account, folder, now = Date.now() }
         await recordContacts(tx, e.from, 'received', e.dateReceived);
       }
     }
+
+    // Also picks up messages cached before threading existed.
+    await threadNewMessages(tx, account.id);
 
     await updateFolderSyncState(tx, folder.id, {
       uidValidity: status.uidValidity,

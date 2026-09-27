@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFrameDocument, prepareHtml } from '../src/js/mail/html-content.js';
+import { buildFrameDocument, prepareHtml, splitPlainText } from '../src/js/mail/html-content.js';
 
 function parse(html) {
   const div = document.createElement('div');
@@ -71,5 +71,64 @@ describe('buildFrameDocument', () => {
 
     const allowed = buildFrameDocument({ head: '', html: '' }, { allowRemote: true, appOrigin: 'https://localhost' });
     expect(allowed).toMatch(/img-src [^;]*https: http:/);
+  });
+});
+
+describe('quote folding', () => {
+  it('folds a Gmail quote but keeps what was written above it', () => {
+    const { html } = prepareHtml(
+      '<div>Sounds good!</div><div class="gmail_quote"><div>On Mon, Bob wrote:</div><blockquote>Earlier</blockquote></div>',
+      { foldQuotes: true },
+    );
+    const out = parse(html);
+    expect(out.querySelector('details.despatch-quote .gmail_quote')).not.toBeNull();
+    expect(out.firstElementChild.textContent).toBe('Sounds good!');
+  });
+
+  it('folds everything after an Outlook reply header', () => {
+    const { html } = prepareHtml('<p>Thanks</p><div id="divRplyFwdMsg">From: Bob</div><p>Old text</p><p>Older</p>', {
+      foldQuotes: true,
+    });
+    const details = parse(html).querySelector('details.despatch-quote');
+    expect(details.textContent).toContain('From: Bob');
+    expect(details.textContent).toContain('Older');
+  });
+
+  it('does not fold a message that is only a quote', () => {
+    const { html } = prepareHtml('<blockquote type="cite">Forwarded text</blockquote>', { foldQuotes: true });
+    expect(parse(html).querySelector('details')).toBeNull();
+  });
+});
+
+describe('splitPlainText', () => {
+  it('separates the reply, the attribution-led quote and the signature', () => {
+    const text = 'Yes, Friday works.\n\n-- \nAlice\n0400 000 000\n\nOn Mon, 5 Oct 2026, Bob wrote:\n> Can we meet?\n> Friday?';
+    expect(splitPlainText(text)).toEqual({
+      body: 'Yes, Friday works.',
+      signature: 'Alice\n0400 000 000',
+      quote: 'On Mon, 5 Oct 2026, Bob wrote:\n> Can we meet?\n> Friday?',
+    });
+  });
+
+  it('treats trailing quoted lines as a quote', () => {
+    expect(splitPlainText('Agreed.\n\n> earlier line\n> another')).toMatchObject({
+      body: 'Agreed.',
+      quote: '> earlier line\n> another',
+    });
+  });
+
+  it('recognises Outlook headers and other languages', () => {
+    expect(splitPlainText('Ok\nFrom: Bob\nSent: Monday\nSubject: x').quote).toMatch(/^From: Bob/);
+    expect(splitPlainText('Ja\nAm 5. Okt. 2026 schrieb Bob <b@x.de>:\n> Hallo').quote).toMatch(/^Am 5/);
+    expect(splitPlainText('Just text\nFrom: here to there').quote).toBe('');
+  });
+
+  it('leaves plain messages and all-quote messages alone', () => {
+    expect(splitPlainText('Hello\n> not a quote\nMore text')).toEqual({
+      body: 'Hello\n> not a quote\nMore text',
+      quote: '',
+      signature: '',
+    });
+    expect(splitPlainText('> only quoted').body).toBe('> only quoted');
   });
 });
