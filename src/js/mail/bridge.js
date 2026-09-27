@@ -93,6 +93,8 @@ export function createMailApi(plugin) {
     /** { permission: 'granted' | 'denied' | 'prompt' | …, enabled } */
     notificationStatus: () => call('notificationStatus', {}),
     openNotificationSettings: () => call('openNotificationSettings', {}),
+    openBatterySettings: () => call('openBatterySettings', {}),
+    checkInBackgroundNow: () => call('checkInBackgroundNow', {}),
     requestNotificationPermission: async () =>
       (await plugin.requestPermissions({ permissions: ['notifications'] })).notifications,
     /** Calls back with { action: 'open' | 'reply', accountId, path, uid } when a notification is tapped. */

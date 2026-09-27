@@ -8,6 +8,22 @@ function status(sync) {
   return sync.lastSyncedAt ? `Synced ${formatFullDate(sync.lastSyncedAt)}` : 'Not synced yet';
 }
 
+const TRIGGERS = { scheduled: 'scheduled check', instant: 'instant notification', manual: 'checked now' };
+
+/** "Last background check" line: when, what ran it, and the result. */
+export function lastCheckSummary(status, now = Date.now()) {
+  if (!status?.lastCheckAt) return 'Not yet: Android hasn’t run a background check since this was installed.';
+  const when = formatFullDate(status.lastCheckAt);
+  const ago = Math.round((now - status.lastCheckAt) / 60_000);
+  const age = ago < 1 ? 'just now' : ago < 60 ? `${ago} min ago` : `${Math.round(ago / 60)} h ago`;
+  const result = status.lastCheckError
+    ? `failed: ${status.lastCheckError}`
+    : status.lastCheckNew
+      ? `${status.lastCheckNew} new`
+      : 'no new mail';
+  return `${when} (${age}), ${TRIGGERS[status.lastCheckTrigger] ?? 'check'}: ${result}`;
+}
+
 function notificationSummary(status) {
   if (!status) return 'Checking…';
   if (status.permission === 'granted' && status.enabled) return 'On';
@@ -70,7 +86,7 @@ export function renderSettings(element, { accounts, sync, confirmRemoveId, setti
         <label class="switch-row">
           <span>
             <span class="switch-row__label">Check for new mail</span>
-            <span class="switch-row__detail">When the app isn’t open.</span>
+            <span class="switch-row__detail">When the app isn’t open. Android may delay checks while your phone is idle.</span>
           </span>
           <select class="settings__select" data-setting="syncIntervalMinutes">
             ${[15, 30, 60, 180].map(
@@ -83,11 +99,29 @@ export function renderSettings(element, { accounts, sync, confirmRemoveId, setti
         <label class="switch-row">
           <span>
             <span class="switch-row__label">Instant notifications</span>
-            <span class="switch-row__detail">Keeps a connection open so new mail shows at once. Uses more battery, and Android shows an ongoing notification.</span>
+            <span class="switch-row__detail">Keeps a connection open so new mail shows at once. Uses more battery, and Android shows an ongoing notification. Works best with battery use set to Unrestricted.</span>
           </span>
           <input class="switch" type="checkbox" role="switch" data-action="toggle-setting" data-setting="instantNotifications"
             ${settings.instantNotifications ? 'checked' : ''} />
         </label>
+        <div class="switch-row">
+          <span>
+            <span class="switch-row__label">Background activity: ${notificationStatus?.batteryOptimized === false ? 'Unrestricted' : 'Optimised by Android'}</span>
+            <span class="switch-row__detail">
+              ${notificationStatus?.batteryOptimized === false
+                ? 'Checks run when scheduled, even while your phone is idle.'
+                : 'While your phone is idle, Android can hold back checks for hours. For timely alerts, open App battery usage and choose Unrestricted.'}
+            </span>
+          </span>
+          <button class="text-button" type="button" data-action="battery-settings">Change</button>
+        </div>
+        <div class="switch-row">
+          <span>
+            <span class="switch-row__label">Last background check</span>
+            <span class="switch-row__detail">${lastCheckSummary(notificationStatus)}</span>
+          </span>
+          <button class="text-button" type="button" data-action="check-now">Check now</button>
+        </div>
         </div>
 
         <h2 class="settings__heading">Reading</h2>

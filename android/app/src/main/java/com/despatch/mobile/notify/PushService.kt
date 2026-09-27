@@ -78,7 +78,7 @@ class PushService : Service() {
     }
 
     /** New mail signalled by IDLE: the same check (and notifications) as the periodic worker. */
-    private suspend fun checkNow() = checkLock.withLock { SyncWorker.checkAll(this) }
+    private suspend fun checkNow() = checkLock.withLock { SyncWorker.checkAll(this, trigger = "instant") }
 
     private fun ongoingNotification() = NotificationCompat.Builder(this, ensureServiceChannel())
         .setSmallIcon(R.drawable.ic_stat_mail)

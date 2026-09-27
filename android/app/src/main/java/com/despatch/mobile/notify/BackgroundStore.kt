@@ -37,6 +37,24 @@ class BackgroundStore(context: Context) : NewMailChecker.State {
         get() = prefs.getBoolean("push", false)
         set(value) = prefs.edit().putBoolean("push", value).apply()
 
+    /**
+     * The last background check, shown in Settings so it's clear whether Android
+     * actually ran it: when, what triggered it, how many new messages, and any error.
+     */
+    fun recordCheck(trigger: String, newMessages: Int, error: String?) {
+        prefs.edit()
+            .putLong("lastCheckAt", System.currentTimeMillis())
+            .putString("lastCheckTrigger", trigger)
+            .putInt("lastCheckNew", newMessages)
+            .putString("lastCheckError", error)
+            .apply()
+    }
+
+    val lastCheckAt: Long get() = prefs.getLong("lastCheckAt", 0)
+    val lastCheckTrigger: String? get() = prefs.getString("lastCheckTrigger", null)
+    val lastCheckNew: Int get() = prefs.getInt("lastCheckNew", 0)
+    val lastCheckError: String? get() = prefs.getString("lastCheckError", null)
+
     val accounts: List<BackgroundAccount>
         get() {
             val array = JSONArray(accountsJson)

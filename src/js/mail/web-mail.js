@@ -165,6 +165,12 @@ export class DespatchMailWeb extends WebPlugin {
     return { permission: 'denied', enabled: false };
   }
 
+  async openBatterySettings() {
+    throw mailError('UNSUPPORTED', 'Battery settings need the Android app.');
+  }
+
+  async checkInBackgroundNow() {}
+
   async openNotificationSettings() {
     throw mailError('UNSUPPORTED', 'Notification settings need the Android app.');
   }

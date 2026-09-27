@@ -98,6 +98,8 @@ export function createNotifications({ db, mail, store, router, syncManager, onEr
 
     status: () => mail.notificationStatus(),
     openSystemSettings: () => mail.openNotificationSettings(),
+    openBatterySettings: () => mail.openBatterySettings(),
+    checkNow: () => mail.checkInBackgroundNow(),
     requestPermission: () => mail.requestNotificationPermission(),
   };
 }

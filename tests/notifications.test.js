@@ -98,3 +98,21 @@ describe('notifications controller', () => {
     expect(fx.router.navigate).toHaveBeenLastCalledWith({ name: 'mailbox', folderId: 'unified', threadId: null });
   });
 });
+
+describe('last background check summary', () => {
+  it('says whether Android has run a check, when, and what it found', async () => {
+    const { lastCheckSummary } = await import('../src/js/views/settings.js');
+    const now = Date.UTC(2026, 8, 28, 6, 0);
+    expect(lastCheckSummary(null)).toMatch(/^Not yet/);
+    expect(lastCheckSummary({ lastCheckAt: null })).toMatch(/^Not yet/);
+    expect(lastCheckSummary({ lastCheckAt: now - 20 * 60_000, lastCheckTrigger: 'scheduled', lastCheckNew: 2 }, now)).toMatch(
+      /\(20 min ago\), scheduled check: 2 new$/,
+    );
+    expect(lastCheckSummary({ lastCheckAt: now - 3 * 3600_000, lastCheckTrigger: 'instant', lastCheckNew: 0 }, now)).toMatch(
+      /\(3 h ago\), instant notification: no new mail$/,
+    );
+    expect(lastCheckSummary({ lastCheckAt: now, lastCheckTrigger: 'manual', lastCheckError: 'a@b.c: Could not connect' }, now)).toMatch(
+      /checked now: failed: a@b.c: Could not connect$/,
+    );
+  });
+});

@@ -313,6 +313,16 @@ document.addEventListener('click', (event) => {
     case 'notification-permission':
       notifications.requestPermission().then(refreshNotificationStatus).catch(showError);
       break;
+    case 'battery-settings':
+      notifications.openBatterySettings().catch(showError);
+      break;
+    case 'check-now':
+      target.disabled = true;
+      notifications
+        .checkNow()
+        .catch(showError)
+        .finally(refreshNotificationStatus);
+      break;
   }
   // Also covers tapping the current destination, where no hashchange fires.
   if (event.target.closest('.nav__item')) setDrawerOpen(false);

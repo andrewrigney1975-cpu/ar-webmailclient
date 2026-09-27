@@ -11,6 +11,7 @@ import androidx.work.WorkerParameters
 import com.despatch.mobile.MainActivity
 import com.despatch.mobile.mail.CredentialStore
 import com.despatch.mobile.mail.ImapService
+import com.despatch.mobile.mail.MailErrors
 import com.despatch.mobile.mail.NewMailChecker
 import java.util.concurrent.TimeUnit
 
@@ -22,7 +23,7 @@ import java.util.concurrent.TimeUnit
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        checkAll(applicationContext)
+        checkAll(applicationContext, trigger = "scheduled")
         return Result.success()
     }
 
@@ -30,22 +31,27 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         private const val WORK_NAME = "despatch.mail-check"
 
         /** Checks every account with notifications on, and notifies unless the app is on screen. */
-        suspend fun checkAll(context: Context) {
+        suspend fun checkAll(context: Context, trigger: String) {
             val store = BackgroundStore(context)
             val imap = ImapService(CredentialStore.forAndroid(context))
             val checker = NewMailChecker(imap, store)
             val notifier = MailNotifier(context)
+            var found = 0
+            val errors = mutableListOf<String>()
             try {
                 for (account in store.accounts.filter { it.notify }) {
                     try {
                         val arrived = checker.check(account.account, account.inboxPath)
+                        found += arrived.size
                         if (!MainActivity.isVisible) notifier.notifyNewMail(account, arrived)
-                    } catch (_: Exception) {
+                    } catch (error: Exception) {
                         // One account failing (password changed, server down) mustn't stop the others.
+                        errors += "${account.account.email}: ${MailErrors.classify(error).message}"
                     }
                 }
             } finally {
                 imap.disconnectAll()
+                store.recordCheck(trigger, found, errors.joinToString("; ").ifEmpty { null })
             }
         }
 

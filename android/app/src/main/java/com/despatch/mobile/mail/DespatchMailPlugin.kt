@@ -13,6 +13,7 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import android.Manifest
 import android.provider.Settings
+import android.os.PowerManager
 import android.content.ContentValues
 import android.os.Environment
 import android.provider.MediaStore
@@ -341,11 +342,42 @@ class DespatchMailPlugin : Plugin() {
         null
     }
 
+    /**
+     * Notification permission, whether Android restricts background work for the
+     * app (battery optimisation), and the last background check.
+     */
     @PluginMethod
     fun notificationStatus(call: PluginCall) = run(call) {
+        val store = BackgroundStore(context)
+        val power = context.getSystemService(PowerManager::class.java)
         JSObject()
             .put("permission", getPermissionState("notifications")?.toString()?.lowercase() ?: "prompt")
             .put("enabled", NotificationManagerCompat.from(context).areNotificationsEnabled())
+            .put("batteryOptimized", !power.isIgnoringBatteryOptimizations(context.packageName))
+            .put("lastCheckAt", store.lastCheckAt.takeIf { it > 0 })
+            .put("lastCheckTrigger", store.lastCheckTrigger)
+            .put("lastCheckNew", store.lastCheckNew)
+            .put("lastCheckError", store.lastCheckError)
+    }
+
+    /**
+     * Opens the app's page in system settings, where "App battery usage" can be
+     * set to Unrestricted so background checks aren't held back while idle.
+     */
+    @PluginMethod
+    fun openBatterySettings(call: PluginCall) = run(call) {
+        context.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+        null
+    }
+
+    /** Runs a background check now (Settings > "Check now"), recording it like a scheduled one. */
+    @PluginMethod
+    fun checkInBackgroundNow(call: PluginCall) = run(call) {
+        SyncWorker.checkAll(context, trigger = "manual")
+        null
     }
 
     @PluginMethod
