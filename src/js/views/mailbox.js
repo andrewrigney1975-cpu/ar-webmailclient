@@ -6,9 +6,16 @@
  * Either way a row's `id` is a conversation key ("m:<id>" for a single
  * message), which is also the route's threadId; actions turn keys into the
  * message IDs in the current folder.
+ *
+ * The folder "search" shows search results (single messages, PLAN.md §4.6);
+ * each opens its whole conversation.
  */
 import { html, icon, markup, render } from '../html.js';
-import { buildHash, UNIFIED_INBOX } from '../router.js';
+import { buildHash, SEARCH, UNIFIED_INBOX } from '../router.js';
+import { listPrefsFor, saveListPrefs } from '../settings.js';
+import { parseQuery, hasToken, isEmptyQuery, toggleToken } from '../search/query-parser.js';
+import { countSearch, MARK_END, MARK_START, searchMessages } from '../search/search.js';
+import { searchServer } from '../search/server-search.js';
 import { countMessages, listMessages } from '../db/repo-messages.js';
 import { countThreads, listThreads, messageIdsInThreads, unreadIdsInThreads } from '../db/repo-threads.js';
 import { displayName, formatListDate } from '../util/format.js';
@@ -22,7 +29,54 @@ function initialOf(person) {
   return (text[0] ?? '?').toUpperCase();
 }
 
-export function createMailboxView({ element, db, store, router, actions, syncManager, snackbar, onError, onOutboxAction }) {
+const SORT_OPTIONS = [
+  { value: { sort: 'dateReceived', descending: true }, label: 'Newest first' },
+  { value: { sort: 'dateReceived', descending: false }, label: 'Oldest first' },
+  { value: { sort: 'dateSent', descending: true }, label: 'Date sent' },
+  { value: { sort: 'sender', descending: false }, label: 'Sender (A–Z)' },
+  { value: { sort: 'sender', descending: true }, label: 'Sender (Z–A)' },
+  { value: { sort: 'size', descending: true }, label: 'Largest first' },
+  { value: { sort: 'size', descending: false }, label: 'Smallest first' },
+];
+const ATTACHMENT_OPTIONS = [
+  { value: 'any', label: 'All messages' },
+  { value: 'with', label: 'With attachments' },
+  { value: 'without', label: 'Without attachments' },
+];
+const SEARCH_CHIPS = [
+  { token: 'is:unread', label: 'Unread' },
+  { token: 'is:flagged', label: 'Flagged' },
+  { token: 'has:attachment', label: 'Attachments' },
+];
+
+/** A snippet is worth showing unless the match was just the subject line. */
+function showSnippet(message) {
+  if (!message.searchSnippet) return false;
+  const plain = message.searchSnippet.replace(new RegExp(`[${MARK_START}${MARK_END}]`, 'g'), '').trim();
+  return plain.toLowerCase() !== (message.subject ?? '').trim().toLowerCase();
+}
+
+/** Escapes a search snippet and turns the match markers into <mark>. */
+function highlighted(snippet) {
+  const parts = snippet.split(new RegExp(`(${MARK_START}[^${MARK_END}]*${MARK_END})`));
+  return parts.map((part) =>
+    part.startsWith(MARK_START) ? html`<mark>${part.slice(1, -1)}</mark>` : part.replaceAll(MARK_START, '').replaceAll(MARK_END, ''),
+  );
+}
+
+export function createMailboxView({
+  element,
+  db,
+  mail,
+  store,
+  router,
+  actions,
+  syncManager,
+  snackbar,
+  onError,
+  onOutboxAction,
+  chooseFromSheet,
+}) {
   render(
     element,
     html`
@@ -43,25 +97,46 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
   let route = null;
   let selection = new Set();
   let unregisterSelection = null;
+  let searchText = '';
+  let searchTimer = null;
+  let searchingServer = false;
+  let barMode = null;
 
   const folderOf = (message) => store.get().folders.find((f) => f.id === message.folderId);
   const accountOf = (message) => store.get().accounts.find((a) => a.id === message.accountId);
   const query = () => (route.folderId === UNIFIED_INBOX ? { unified: true } : { folderId: Number(route.folderId) });
-  const threading = () => store.get().settings.threading;
+  const searching = () => route?.folderId === SEARCH;
+  const threading = () => store.get().settings.threading && !searching();
+  const prefs = () => listPrefsFor(store.get().listPrefs, route.folderId);
+  const listOptions = () => {
+    const { sort, descending, attachments } = prefs();
+    return { sort, descending, attachments };
+  };
   const isMe = (person) => store.get().accounts.some((a) => a.email === person?.address?.toLowerCase());
 
   function asRow(message) {
-    return { ...message, id: `m:${message.id}`, messageId: message.id, thread: null };
+    return {
+      ...message,
+      id: `m:${message.id}`,
+      openKey: searching() ? (message.threadId ?? `m:${message.id}`) : `m:${message.id}`,
+      messageId: message.id,
+      thread: null,
+    };
   }
 
   async function fetchPage(offset, limit) {
-    if (threading()) return listThreads(db, { ...query(), offset, limit });
-    return (await listMessages(db, { ...query(), offset, limit })).map(asRow);
+    if (searching()) {
+      const { sort, descending } = listOptions();
+      return (await searchMessages(db, parseQuery(searchText), { sort, descending, offset, limit })).map(asRow);
+    }
+    if (threading()) return listThreads(db, { ...query(), ...listOptions(), offset, limit });
+    return (await listMessages(db, { ...query(), ...listOptions(), offset, limit })).map(asRow);
   }
 
   /** Message IDs in the current folder for these row keys. */
   async function messageIds(keys) {
     const single = keys.filter((k) => k.startsWith('m:')).map((k) => Number(k.slice(2)));
+    if (searching()) return single;
     const threads = keys.filter((k) => !k.startsWith('m:'));
     return [...single, ...(await messageIdsInThreads(db, threads, query()))];
   }
@@ -79,22 +154,23 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
     const who = outgoing ? `To: ${m.to.map(displayName).join(', ') || '(no recipients)'}` : participants(m);
     const count = m.thread?.count > 1 ? m.thread.count : 0;
     const selected = selection.has(m.id);
+    const openKey = String(m.openKey ?? m.id);
     const classes = [
       'message-row',
       m.isRead ? '' : 'message-row--unread',
-      String(m.id) === route.threadId ? 'message-row--current' : '',
+      openKey === route.threadId ? 'message-row--current' : '',
       selected ? 'message-row--selected' : '',
     ].join(' ');
     return markup(html`
       <div class="vlist__action vlist__action--right">${icon('archive')}<span>${SWIPE_LABELS.archive}</span></div>
       <div class="vlist__action vlist__action--left"><span>${SWIPE_LABELS.trash}</span>${icon('delete')}</div>
-      <a class="${classes}" href="${buildHash({ ...route, threadId: String(m.id) })}"
+      <a class="${classes}" href="${buildHash({ ...route, threadId: openKey })}"
          style="--row-accent: ${accountOf(m)?.accentColor ?? 'var(--accent)'}"
          aria-selected="${selection.size ? String(selected) : 'false'}">
         <span class="message-row__avatar" aria-hidden="true">${selected ? icon('check') : initialOf(outgoing ? m.to[0] : m.from)}</span>
         <span class="message-row__from">${who}${count ? html` <span class="message-row__count">${count}</span>` : ''}</span>
         <span class="message-row__date">${formatListDate(m.dateReceived ?? m.dateSent)}</span>
-        <span class="message-row__subject">${m.subject || '(no subject)'}</span>
+        <span class="message-row__subject">${m.subject || '(no subject)'}${showSnippet(m) ? html` <span class="message-row__snippet">— ${highlighted(m.searchSnippet)}</span>` : ''}</span>
         <span class="message-row__icons">
           ${m.hasAttachments ? icon('attach', 'Has attachments') : ''}
           ${m.isFlagged ? icon('star', 'Flagged') : ''}
@@ -229,14 +305,88 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
   let confirmDeleteForever = async () => false;
 
   function refreshFromServer() {
-    if (route.folderId === UNIFIED_INBOX) syncManager.syncAll();
+    if (searching()) runServerSearch();
+    else if (route.folderId === UNIFIED_INBOX) syncManager.syncAll();
     else syncManager.syncFolderIfStale(Number(route.folderId), { force: true });
+  }
+
+  // --- Search and sort -------------------------------------------------------------------------------
+
+  function setSearchText(text, { immediate = false } = {}) {
+    searchText = text;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => reload({ reset: true }), immediate ? 0 : 250);
+    renderSearchChips();
+  }
+
+  async function runServerSearch() {
+    const query = parseQuery(searchText);
+    if (isEmptyQuery(query) || searchingServer) return;
+    searchingServer = true;
+    renderSearchChips();
+    try {
+      const found = await searchServer({ db, mail, store, query });
+      snackbar.show(found ? `Found ${found} more on the server.` : 'Nothing more on the server.');
+      await reload({ reset: false });
+    } catch (error) {
+      onError(error);
+    } finally {
+      searchingServer = false;
+      renderSearchChips();
+    }
+  }
+
+  async function chooseSort() {
+    const current = prefs();
+    const choice = await chooseFromSheet(router, {
+      title: 'Sort and filter',
+      items: [
+        { heading: 'Sort by' },
+        ...SORT_OPTIONS.map((o) => ({
+          value: { ...current, ...o.value },
+          label: o.label,
+          icon: o.value.sort === current.sort && o.value.descending === current.descending ? 'check' : 'blank',
+        })),
+        ...(searching()
+          ? []
+          : [
+              { heading: 'Show' },
+              ...ATTACHMENT_OPTIONS.map((o) => ({
+                value: { ...current, attachments: o.value },
+                label: o.label,
+                icon: o.value === current.attachments ? 'check' : 'blank',
+              })),
+            ]),
+      ],
+    });
+    if (!choice) return;
+    const listPrefs = { ...store.get().listPrefs, [route.folderId]: choice };
+    store.set({ listPrefs });
+    saveListPrefs(listPrefs).catch(() => {});
+    reload({ reset: true });
+    renderBar();
+  }
+
+  function renderSearchChips() {
+    const chips = element.querySelector('[data-part=search-chips]');
+    if (!chips) return;
+    render(
+      chips,
+      html`${SEARCH_CHIPS.map(
+        (chip) => html`<button class="filter-chip" type="button" data-search-token="${chip.token}"
+          aria-pressed="${String(hasToken(searchText, chip.token))}">${chip.label}</button>`,
+      )}
+      <button class="filter-chip" type="button" data-search="server" ${searchingServer || isEmptyQuery(parseQuery(searchText)) ? 'disabled' : ''}>
+        ${searchingServer ? 'Searching server…' : 'Search server'}
+      </button>`,
+    );
   }
 
   // --- Rendering -----------------------------------------------------------------------------------
 
   function title() {
     if (route.folderId === UNIFIED_INBOX) return 'Unified Inbox';
+    if (searching()) return 'Search';
     const folder = store.get().folders.find((f) => String(f.id) === route.folderId);
     if (!folder) return 'Folder';
     return folder.role === 'inbox' ? 'Inbox' : folder.name;
@@ -272,12 +422,47 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
       return;
     }
     bar.classList.remove('app-bar--selection');
+
+    if (searching()) {
+      // Render the search field once, so typing isn't interrupted by status updates.
+      if (barMode === 'search') return;
+      barMode = 'search';
+      render(
+        bar,
+        html`
+          <div class="search-bar">
+            <button class="icon-button" type="button" data-action="back">${icon('back', 'Close search')}</button>
+            <input class="search-bar__input" type="search" enterkeyhint="search" placeholder="Search mail"
+              aria-label="Search mail" value="${searchText}" autocapitalize="off" spellcheck="false" />
+            <button class="icon-button" type="button" data-search="sort">${icon('sort', 'Sort')}</button>
+          </div>
+          <div class="search-chips" data-part="search-chips"></div>
+        `,
+      );
+      renderSearchChips();
+      const input = bar.querySelector('.search-bar__input');
+      input.addEventListener('input', () => setSearchText(input.value));
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          setSearchText(input.value, { immediate: true });
+          input.blur();
+        }
+      });
+      requestAnimationFrame(() => input.focus());
+      return;
+    }
+
+    barMode = 'normal';
     const syncing = accounts.some((a) => sync[a.id]?.state === 'syncing');
+    const filtered = prefs().attachments !== 'any' || prefs().sort !== 'dateReceived' || !prefs().descending;
     render(
       bar,
       html`
         <button class="icon-button app-bar__menu" type="button" data-action="open-drawer">${icon('menu', 'Open navigation')}</button>
         <h1 class="app-bar__title">${title()}</h1>
+        <button class="icon-button" type="button" data-search="open">${icon('search', 'Search')}</button>
+        <button class="icon-button${filtered ? ' icon-button--active' : ''}" type="button" data-search="sort"
+          aria-pressed="${String(filtered)}">${icon('sort', 'Sort and filter')}</button>
         <button class="icon-button${syncing ? ' icon-button--spinning' : ''}" type="button" data-part="refresh"
           ${accounts.length === 0 || !online ? 'disabled' : ''}>${icon('refresh', 'Check for new mail')}</button>
       `,
@@ -290,9 +475,17 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
   });
 
   bar.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-selection], [data-part=refresh]');
+    const button = event.target.closest('[data-selection], [data-part=refresh], [data-search], [data-search-token]');
     if (!button) return;
-    if (button.dataset.part === 'refresh') refreshFromServer();
+    if (button.dataset.searchToken) {
+      const next = toggleToken(searchText, button.dataset.searchToken);
+      bar.querySelector('.search-bar__input').value = next;
+      setSearchText(next, { immediate: true });
+    } else if (button.dataset.search === 'open') {
+      router.navigate({ name: 'mailbox', folderId: SEARCH, threadId: null });
+    } else if (button.dataset.search === 'sort') chooseSort();
+    else if (button.dataset.search === 'server') runServerSearch();
+    else if (button.dataset.part === 'refresh') refreshFromServer();
     else if (button.dataset.selection === 'clear') setSelection(new Set());
     else runSelectionAction(button.dataset.selection);
   });
@@ -338,9 +531,13 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
       render(empty, html`<dm-empty-state icon="mail" heading="No accounts yet"
         message="Add an IMAP account to start receiving mail." action-label="Add account"
         action-href="#/accounts/new"></dm-empty-state>`);
+    } else if (searching() && count === 0) {
+      const blank = isEmptyQuery(parseQuery(searchText));
+      render(empty, html`<dm-empty-state icon="search" heading="${blank ? 'Search your mail' : 'No results on this device'}"
+        message="${blank ? 'Try from:, to:, subject:, has:attachment, is:unread, before: or larger:5M.' : 'Try “Search server” for older mail.'}"></dm-empty-state>`);
     } else if (count === 0) {
       render(empty, html`<dm-empty-state icon="inbox" heading="${syncing ? 'Checking for mail…' : 'Nothing here'}"
-        message="${syncing ? '' : 'This folder is empty.'}"></dm-empty-state>`);
+        message="${syncing ? '' : prefs().attachments !== 'any' ? 'No messages match the filter.' : 'This folder is empty.'}"></dm-empty-state>`);
     } else {
       empty.replaceChildren();
     }
@@ -348,7 +545,11 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
 
   async function reload({ reset }) {
     const current = route;
-    const count = threading() ? await countThreads(db, query()) : await countMessages(db, query());
+    const scoped = searching() ? null : { ...query(), ...listOptions() };
+    let count;
+    if (searching()) count = isEmptyQuery(parseQuery(searchText)) ? 0 : await countSearch(db, parseQuery(searchText));
+    else if (threading()) count = await countThreads(db, scoped);
+    else count = await countMessages(db, scoped);
     if (current !== route) return;
     if (reset) list.reset(count);
     else list.refresh(count);
@@ -367,6 +568,7 @@ export function createMailboxView({ element, db, store, router, actions, syncMan
       const folderChanged = next.folderId !== route?.folderId;
       route = next;
       if (folderChanged) {
+        barMode = null;
         setSelection(new Set());
         renderBar();
         reload({ reset: true });

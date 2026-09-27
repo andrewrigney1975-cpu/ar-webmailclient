@@ -15,6 +15,8 @@
  */
 
 export const UNIFIED_INBOX = 'unified';
+/** The mailbox "folder" that shows search results. */
+export const SEARCH = 'search';
 const COMPOSE_MODES = ['reply', 'replyall', 'forward', 'draft', 'mailto'];
 
 export function parseHash(hash) {

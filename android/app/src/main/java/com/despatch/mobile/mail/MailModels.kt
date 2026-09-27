@@ -122,6 +122,21 @@ data class OutgoingMessage(
     val attachments: List<OutgoingAttachment>,
 )
 
+/** IMAP SEARCH criteria (src/js/search/search.js serverCriteria). Null means "don't filter". */
+data class SearchCriteria(
+    val text: List<String> = emptyList(),
+    val from: List<String> = emptyList(),
+    val to: List<String> = emptyList(),
+    val subject: List<String> = emptyList(),
+    val unread: Boolean? = null,
+    val flagged: Boolean? = null,
+    /** Epoch millis. */
+    val before: Long? = null,
+    val after: Long? = null,
+    val larger: Int? = null,
+    val smaller: Int? = null,
+)
+
 data class ConnectionTest(val imapCapabilities: List<String>, val smtpChecked: Boolean)
 
 data class SendResult(val messageId: String, val sentFolderUid: Long?)

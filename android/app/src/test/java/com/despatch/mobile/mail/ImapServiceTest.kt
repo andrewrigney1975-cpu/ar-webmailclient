@@ -189,6 +189,25 @@ class ImapServiceTest {
     }
 
     @Test
+    fun searchesTheServer() = runBlocking<Unit> {
+        deliverSample()
+        val all = imap.fetchEnvelopes(server.account, "INBOX", MessageQuery.Latest(10))
+        fun bySubject(vararg subjects: String) = all.filter { it.subject in subjects }.map { it.uid }.sortedDescending()
+
+        assertEquals(bySubject("Invoice"), imap.search(server.account, "INBOX", SearchCriteria(text = listOf("invoice"))))
+        assertEquals(
+            bySubject("Re: First – ünïcödé"),
+            imap.search(server.account, "INBOX", SearchCriteria(from = listOf("zoe@example.net"))),
+        )
+        imap.setFlags(server.account, "INBOX", listOf(all[0].uid), add = listOf("\\Seen"), remove = emptyList())
+        assertEquals(
+            all.drop(1).map { it.uid }.sortedDescending(),
+            imap.search(server.account, "INBOX", SearchCriteria(unread = true)),
+        )
+        assertEquals(emptyList<Long>(), imap.search(server.account, "INBOX", SearchCriteria()))
+    }
+
+    @Test
     fun deletesMessagesPermanently() = runBlocking<Unit> {
         deliverSample()
         val uids = imap.fetchEnvelopes(server.account, "INBOX", MessageQuery.Latest(10)).map { it.uid }

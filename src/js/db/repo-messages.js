@@ -108,10 +108,12 @@ export async function clearFolder(tx, folderId) {
   await tx.run('DELETE FROM messages WHERE folder_id = ?', [folderId]);
 }
 
-function scope({ folderId = null, unified = false }) {
+/** `attachments`: 'any' (default), 'with' or 'without'. */
+function scope({ folderId = null, unified = false, attachments = 'any' }) {
+  const filter = attachments === 'with' ? ' AND m.has_attachments = 1' : attachments === 'without' ? ' AND m.has_attachments = 0' : '';
   return unified
-    ? { where: "m.folder_id IN (SELECT id FROM folders WHERE role = 'inbox')", params: [] }
-    : { where: 'm.folder_id = ?', params: [folderId] };
+    ? { where: `m.folder_id IN (SELECT id FROM folders WHERE role = 'inbox')${filter}`, params: [] }
+    : { where: `m.folder_id = ?${filter}`, params: [folderId] };
 }
 
 export async function countMessages(db, query) {
@@ -125,11 +127,11 @@ export async function countMessages(db, query) {
  */
 export async function listMessages(
   db,
-  { folderId = null, unified = false, sort = 'dateReceived', descending = true, limit = 200, offset = 0 } = {},
+  { folderId = null, unified = false, attachments = 'any', sort = 'dateReceived', descending = true, limit = 200, offset = 0 } = {},
 ) {
   const order = SORTS[sort] ?? SORTS.dateReceived;
   const direction = descending ? 'DESC' : 'ASC';
-  const { where, params } = scope({ folderId, unified });
+  const { where, params } = scope({ folderId, unified, attachments });
   // Envelope columns only: bodies can be large and the list never shows them.
   const rows = await db.all(
     `SELECT ${LIST_COLUMNS} FROM messages m WHERE ${where} ORDER BY ${order} ${direction}, m.id ${direction} LIMIT ? OFFSET ?`,

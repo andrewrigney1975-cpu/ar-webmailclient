@@ -8,6 +8,18 @@ import jakarta.mail.Store
 import jakarta.mail.UIDFolder
 import jakarta.mail.internet.InternetAddress
 import jakarta.mail.internet.MimeMessage
+import jakarta.mail.search.AndTerm
+import jakarta.mail.search.ComparisonTerm
+import jakarta.mail.search.FlagTerm
+import jakarta.mail.search.FromStringTerm
+import jakarta.mail.search.OrTerm
+import jakarta.mail.search.ReceivedDateTerm
+import jakarta.mail.search.RecipientStringTerm
+import jakarta.mail.search.SearchTerm
+import jakarta.mail.search.SizeTerm
+import jakarta.mail.search.SubjectTerm
+import jakarta.mail.search.BodyTerm
+import java.util.Date
 import org.eclipse.angus.mail.imap.IMAPFolder
 import org.eclipse.angus.mail.imap.IMAPMessage
 import org.eclipse.angus.mail.imap.IMAPStore
@@ -263,6 +275,19 @@ class ImapService(private val passwords: PasswordSource) {
             if (store.hasCapability("UIDPLUS")) folder.expunge(messages) else folder.expunge()
         }
 
+    /**
+     * Server-side search (IMAP SEARCH) for mail that isn't cached locally.
+     * Returns the UIDs of up to [limit] matching messages, newest first.
+     */
+    suspend fun search(account: AccountConfig, path: String, criteria: SearchCriteria, limit: Int = 200): List<Long> =
+        withFolder(account, path, Folder.READ_ONLY) { folder ->
+            val term = searchTerm(criteria) ?: return@withFolder emptyList()
+            val matches = folder.search(term)
+            val newest = matches.takeLast(limit).toTypedArray()
+            folder.fetch(newest, FetchProfile().apply { add(UIDFolder.FetchProfileItem.UID) })
+            newest.map { folder.getUID(it) }.sortedDescending()
+        }
+
     /** Appends a message (e.g. to Sent or Drafts) and returns its UID when the server reports it. */
     suspend fun append(account: AccountConfig, path: String, message: MimeMessage, flags: List<String>): Long? =
         withStore(account) { store ->
@@ -334,6 +359,28 @@ class ImapService(private val passwords: PasswordSource) {
         list.orEmpty().filterIsInstance<InternetAddress>().map { MailAddress(it.personal, it.address) }
 
     companion object {
+        fun searchTerm(criteria: SearchCriteria): SearchTerm? {
+            val terms = mutableListOf<SearchTerm>()
+            // Each word may be in the subject, the sender or the body.
+            criteria.text.forEach { terms += OrTerm(arrayOf(SubjectTerm(it), FromStringTerm(it), BodyTerm(it))) }
+            criteria.from.forEach { terms += FromStringTerm(it) }
+            criteria.to.forEach {
+                terms += OrTerm(RecipientStringTerm(Message.RecipientType.TO, it), RecipientStringTerm(Message.RecipientType.CC, it))
+            }
+            criteria.subject.forEach { terms += SubjectTerm(it) }
+            criteria.unread?.let { terms += FlagTerm(Flags(Flags.Flag.SEEN), !it) }
+            criteria.flagged?.let { terms += FlagTerm(Flags(Flags.Flag.FLAGGED), it) }
+            criteria.before?.let { terms += ReceivedDateTerm(ComparisonTerm.LT, Date(it)) }
+            criteria.after?.let { terms += ReceivedDateTerm(ComparisonTerm.GE, Date(it)) }
+            criteria.larger?.let { terms += SizeTerm(ComparisonTerm.GT, it) }
+            criteria.smaller?.let { terms += SizeTerm(ComparisonTerm.LT, it) }
+            return when (terms.size) {
+                0 -> null
+                1 -> terms.single()
+                else -> AndTerm(terms.toTypedArray())
+            }
+        }
+
         private val messageIdPattern = Regex("<[^<>\\s]+>")
 
         fun messageIds(header: String): List<String> = messageIdPattern.findAll(header).map { it.value }.toList()

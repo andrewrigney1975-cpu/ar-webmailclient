@@ -1,6 +1,6 @@
 import './views/components/dm-empty-state.js';
 import { createStore } from './store.js';
-import { loadSettings, saveSettings } from './settings.js';
+import { loadListPrefs, loadSettings, saveSettings } from './settings.js';
 import { createRouter, UNIFIED_INBOX } from './router.js';
 import { isDrawerModal, watchWidthClass } from './layout.js';
 import { applyAccent, watchColorScheme } from './theme/theme.js';
@@ -45,6 +45,7 @@ const store = createStore({
   dataVersion: 0,
   confirmRemoveId: null,
   settings: await loadSettings(),
+  listPrefs: await loadListPrefs(),
   outbox: [],
 });
 
@@ -107,6 +108,8 @@ function confirmDeleteForever(count) {
 const mailboxView = createMailboxView({
   element: listPane,
   db,
+  mail,
+  chooseFromSheet,
   store,
   router,
   actions,
@@ -236,7 +239,7 @@ store.subscribe(renderApp);
 // Opening a folder syncs it if it hasn't synced recently.
 store.subscribe((state, previous) => {
   const route = state.lastMailboxRoute;
-  if (route && route.folderId !== previous.lastMailboxRoute?.folderId && route.folderId !== UNIFIED_INBOX) {
+  if (route && route.folderId !== previous.lastMailboxRoute?.folderId && /^\d+$/.test(route.folderId)) {
     syncManager.syncFolderIfStale(Number(route.folderId));
   }
 });

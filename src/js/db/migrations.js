@@ -149,6 +149,39 @@ export const MIGRATIONS = [
       );
     `,
   },
+  {
+    version: 5,
+    /**
+     * Full-text search (PLAN.md §4.6). FTS4 rather than FTS5 because the
+     * browser build's sql.js only has FTS4; both work the same for this use.
+     * If the module is missing, search falls back to LIKE (app_meta.search).
+     * Statements run one at a time: the native plugin's script splitter
+     * doesn't cope with trigger bodies.
+     */
+    async run(tx) {
+      await tx.run('CREATE TABLE app_meta (key TEXT PRIMARY KEY, value TEXT)');
+      const columns = 'subject, from_name, from_addr, to_json, body_text';
+      const values = 'new.subject, new.from_name, new.from_addr, new.to_json, new.body_text';
+      try {
+        await tx.run(
+          `CREATE VIRTUAL TABLE messages_fts USING fts4(content='messages', ${columns}, tokenize=unicode61 'remove_diacritics=2')`,
+        );
+      } catch {
+        await tx.run("INSERT INTO app_meta (key, value) VALUES ('search', 'like')");
+        return;
+      }
+      await tx.run(`CREATE TRIGGER messages_fts_insert AFTER INSERT ON messages BEGIN
+        INSERT INTO messages_fts (docid, ${columns}) VALUES (new.id, ${values}); END`);
+      await tx.run(`CREATE TRIGGER messages_fts_before_update BEFORE UPDATE OF ${columns} ON messages BEGIN
+        DELETE FROM messages_fts WHERE docid = old.id; END`);
+      await tx.run(`CREATE TRIGGER messages_fts_after_update AFTER UPDATE OF ${columns} ON messages BEGIN
+        INSERT INTO messages_fts (docid, ${columns}) VALUES (new.id, ${values}); END`);
+      await tx.run(`CREATE TRIGGER messages_fts_delete BEFORE DELETE ON messages BEGIN
+        DELETE FROM messages_fts WHERE docid = old.id; END`);
+      await tx.run("INSERT INTO messages_fts (messages_fts) VALUES ('rebuild')");
+      await tx.run("INSERT INTO app_meta (key, value) VALUES ('search', 'fts4')");
+    },
+  },
 ];
 
 export async function migrate(db, migrations = MIGRATIONS) {
@@ -159,7 +192,8 @@ export async function migrate(db, migrations = MIGRATIONS) {
   for (const migration of migrations) {
     if (migration.version <= current) continue;
     await db.transaction(async (tx) => {
-      await tx.exec(migration.sql);
+      if (migration.run) await migration.run(tx);
+      else await tx.exec(migration.sql);
       await tx.run('INSERT INTO schema_version (version) VALUES (?)', [migration.version]);
     });
   }

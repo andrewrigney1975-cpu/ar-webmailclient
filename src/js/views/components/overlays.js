@@ -5,6 +5,36 @@
  */
 import { html, icon, render } from '../../html.js';
 
+/**
+ * Shows a modal <dialog> and resolves with whatever `finish` is called with.
+ * Every exit (a choice, the backdrop, Escape, the back gesture) goes through
+ * `finish`, so nothing depends on the dialog's own "close" event, which
+ * browsers may defer while the page is hidden.
+ */
+function openDialog(router, dialog, setup) {
+  return new Promise((resolve) => {
+    let done = false;
+    let unregister = () => {};
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      unregister();
+      if (dialog.open) dialog.close();
+      dialog.remove();
+      resolve(value);
+    };
+    document.body.append(dialog);
+    unregister = router.pushOverlay(() => finish(null));
+    dialog.addEventListener('cancel', (event) => {
+      event.preventDefault();
+      finish(null);
+    });
+    dialog.addEventListener('close', () => finish(null));
+    setup(finish);
+    dialog.showModal();
+  });
+}
+
 export function createSnackbar(element) {
   let timer = null;
 
@@ -39,78 +69,54 @@ export function createSnackbar(element) {
  * @param {{ title: string, items: { value: any, label: string, icon?: string, depth?: number }[] }} options
  */
 export function chooseFromSheet(router, { title, items, empty = 'Nothing to choose from.' }) {
-  return new Promise((resolve) => {
-    const dialog = document.createElement('dialog');
-    dialog.className = 'sheet';
-    render(
-      dialog,
-      html`
-        <h2 class="sheet__title">${title}</h2>
-        ${items.length === 0 ? html`<p class="sheet__empty">${empty}</p>` : ''}
-        <ul class="sheet__list" role="list">
-          ${items.map(
-            (item, index) => html`<li>
-              <button class="sheet__item" type="button" data-index="${index}" style="--depth: ${item.depth ?? 0}">
-                ${item.icon ? icon(item.icon) : ''}<span>${item.label}</span>
-              </button>
-            </li>`,
-          )}
-        </ul>
-      `,
-    );
-    document.body.append(dialog);
-
-    let result = null;
-    const unregister = router.pushOverlay(() => dialog.close());
-    dialog.addEventListener('close', () => {
-      unregister();
-      dialog.remove();
-      resolve(result);
-    });
+  const dialog = document.createElement('dialog');
+  dialog.className = 'sheet';
+  render(
+    dialog,
+    html`
+      <h2 class="sheet__title">${title}</h2>
+      ${items.length === 0 ? html`<p class="sheet__empty">${empty}</p>` : ''}
+      <ul class="sheet__list" role="list">
+        ${items.map((item, index) =>
+          item.heading
+            ? html`<li class="sheet__heading" role="presentation">${item.heading}</li>`
+            : html`<li>
+                <button class="sheet__item" type="button" data-index="${index}" style="--depth: ${item.depth ?? 0}">
+                  ${item.icon ? icon(item.icon) : ''}<span>${item.label}</span>
+                </button>
+              </li>`,
+        )}
+      </ul>
+    `,
+  );
+  return openDialog(router, dialog, (finish) => {
     dialog.addEventListener('click', (event) => {
       const button = event.target.closest('.sheet__item');
-      if (button) {
-        result = items[Number(button.dataset.index)].value;
-        dialog.close();
-      } else if (event.target === dialog) {
-        dialog.close(); // tap on the backdrop
-      }
+      if (button) finish(items[Number(button.dataset.index)].value);
+      else if (event.target === dialog) finish(null); // tap on the backdrop
     });
-    dialog.showModal();
   });
 }
 
 /** Resolves true if the user confirms. */
 export function confirmDialog(router, { title, message, confirm, danger = false }) {
-  return new Promise((resolve) => {
-    const dialog = document.createElement('dialog');
-    dialog.className = 'dialog';
-    render(
-      dialog,
-      html`
-        <h2 class="dialog__title">${title}</h2>
-        <p class="dialog__message">${message}</p>
-        <div class="dialog__actions">
-          <button class="text-button" type="button" value="cancel">Cancel</button>
-          <button class="text-button${danger ? ' text-button--danger' : ''}" type="button" value="confirm">${confirm}</button>
-        </div>
-      `,
-    );
-    document.body.append(dialog);
-
-    let confirmed = false;
-    const unregister = router.pushOverlay(() => dialog.close());
-    dialog.addEventListener('close', () => {
-      unregister();
-      dialog.remove();
-      resolve(confirmed);
-    });
+  const dialog = document.createElement('dialog');
+  dialog.className = 'dialog';
+  render(
+    dialog,
+    html`
+      <h2 class="dialog__title">${title}</h2>
+      <p class="dialog__message">${message}</p>
+      <div class="dialog__actions">
+        <button class="text-button" type="button" value="cancel">Cancel</button>
+        <button class="text-button${danger ? ' text-button--danger' : ''}" type="button" value="confirm">${confirm}</button>
+      </div>
+    `,
+  );
+  return openDialog(router, dialog, (finish) => {
     dialog.addEventListener('click', (event) => {
       const button = event.target.closest('button');
-      if (!button) return;
-      confirmed = button.value === 'confirm';
-      dialog.close();
+      if (button) finish(button.value === 'confirm');
     });
-    dialog.showModal();
-  });
+  }).then(Boolean);
 }

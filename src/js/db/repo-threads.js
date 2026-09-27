@@ -16,10 +16,12 @@ const SORTS = {
 // Messages cached before threading ran have no thread ID yet; each is its own conversation.
 const THREAD_KEY = "COALESCE(m.thread_id, 'm:' || m.id)";
 
-function scope({ folderId = null, unified = false }) {
+/** `attachments`: 'any' (default), 'with' or 'without' — judged per message in scope. */
+function scope({ folderId = null, unified = false, attachments = 'any' }) {
+  const filter = attachments === 'with' ? ' AND m.has_attachments = 1' : attachments === 'without' ? ' AND m.has_attachments = 0' : '';
   return unified
-    ? { where: "m.folder_id IN (SELECT id FROM folders WHERE role = 'inbox')", params: [] }
-    : { where: 'm.folder_id = ?', params: [folderId] };
+    ? { where: `m.folder_id IN (SELECT id FROM folders WHERE role = 'inbox')${filter}`, params: [] }
+    : { where: `m.folder_id = ?${filter}`, params: [folderId] };
 }
 
 async function hiddenFolderIds(db, query) {
@@ -41,9 +43,9 @@ export async function countThreads(db, query) {
  */
 export async function listThreads(
   db,
-  { folderId = null, unified = false, sort = 'dateReceived', descending = true, limit = 50, offset = 0 } = {},
+  { folderId = null, unified = false, attachments = 'any', sort = 'dateReceived', descending = true, limit = 50, offset = 0 } = {},
 ) {
-  const { where, params } = scope({ folderId, unified });
+  const { where, params } = scope({ folderId, unified, attachments });
   const order = SORTS[sort] ?? SORTS.dateReceived;
   const direction = descending ? 'DESC' : 'ASC';
   const rows = await db.all(

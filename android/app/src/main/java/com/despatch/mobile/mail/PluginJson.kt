@@ -51,6 +51,25 @@ fun PluginCall.messageQuery(): MessageQuery {
     }
 }
 
+fun PluginCall.searchCriteria(): SearchCriteria {
+    val json = getObject("criteria") ?: missing("criteria")
+    fun strings(name: String) = json.optJSONArray(name)?.let { array -> List(array.length()) { array.getString(it) } } ?: emptyList()
+    fun long(name: String) = if (json.isNull(name) || !json.has(name)) null else json.getLong(name)
+    fun bool(name: String) = if (json.isNull(name) || !json.has(name)) null else json.getBoolean(name)
+    return SearchCriteria(
+        text = strings("text"),
+        from = strings("from"),
+        to = strings("to"),
+        subject = strings("subject"),
+        unread = bool("unread"),
+        flagged = bool("flagged"),
+        before = long("before"),
+        after = long("after"),
+        larger = long("larger")?.toInt(),
+        smaller = long("smaller")?.toInt(),
+    )
+}
+
 fun PluginCall.outgoingMessage(): OutgoingMessage {
     val json = getObject("message") ?: missing("message")
     return OutgoingMessage(

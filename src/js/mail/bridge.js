@@ -113,6 +113,10 @@ export function createMailApi(plugin) {
     moveMessages: async (account, path, uids, destination) =>
       (await call('moveMessages', { account: toNativeAccount(account), path, uids, destination })).newUids,
 
+    /** IMAP SEARCH in one folder; returns matching UIDs, newest first. */
+    searchServer: async (account, path, criteria) =>
+      (await call('searchServer', { account: toNativeAccount(account), path, criteria })).uids,
+
     /** Permanently deletes messages (\Deleted + expunge). Used for "Delete forever" in Trash. */
     deleteMessages: (account, path, uids) =>
       call('deleteMessages', { account: toNativeAccount(account), path, uids }),

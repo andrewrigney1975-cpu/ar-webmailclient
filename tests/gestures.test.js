@@ -147,3 +147,42 @@ describe('pull to refresh', () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 });
+
+describe('sheets and dialogs', () => {
+  // jsdom has no showModal/close; a minimal stand-in that never fires "close",
+  // like a browser that defers it while the page is hidden.
+  beforeEach(() => {
+    HTMLDialogElement.prototype.showModal = function showModal() {
+      this.open = true;
+    };
+    HTMLDialogElement.prototype.close = function close() {
+      this.open = false;
+    };
+  });
+
+  async function load() {
+    const { chooseFromSheet, confirmDialog } = await import('../src/js/views/components/overlays.js');
+    const { createRouter } = await import('../src/js/router.js');
+    const win = { location: { hash: '#/settings', replace() {} }, addEventListener() {} };
+    return { chooseFromSheet, confirmDialog, router: createRouter({ onChange: () => {}, win }) };
+  }
+
+  it('resolves with the chosen item without waiting for a close event', async () => {
+    const { chooseFromSheet, router } = await load();
+    const choice = chooseFromSheet(router, { title: 'Pick', items: [{ heading: 'Group' }, { value: 'a', label: 'A' }, { value: 'b', label: 'B' }] });
+    document.querySelector('dialog.sheet [data-index="2"]').click();
+    expect(await choice).toBe('b');
+    expect(document.querySelector('dialog')).toBeNull();
+  });
+
+  it('resolves null on the back gesture, and confirm dialogs resolve booleans', async () => {
+    const { chooseFromSheet, confirmDialog, router } = await load();
+    const choice = chooseFromSheet(router, { title: 'Pick', items: [{ value: 'a', label: 'A' }] });
+    expect(router.back()).toBe(true);
+    expect(await choice).toBeNull();
+
+    const confirmed = confirmDialog(router, { title: 'Sure?', message: '', confirm: 'Yes' });
+    document.querySelector('dialog button[value=confirm]').click();
+    expect(await confirmed).toBe(true);
+  });
+});

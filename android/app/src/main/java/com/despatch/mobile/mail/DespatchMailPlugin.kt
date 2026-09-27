@@ -164,6 +164,12 @@ class DespatchMailPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun searchServer(call: PluginCall) = run(call) {
+        val uids = imap.search(call.requireAccount(), call.requireString("path"), call.searchCriteria())
+        JSObject().put("uids", JSArray().also { array -> uids.forEach { array.put(it) } })
+    }
+
+    @PluginMethod
     fun deleteMessages(call: PluginCall) = run(call) {
         imap.deleteMessages(call.requireAccount(), call.requireString("path"), call.longList("uids"))
         null

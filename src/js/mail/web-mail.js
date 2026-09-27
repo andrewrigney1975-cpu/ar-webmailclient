@@ -218,6 +218,22 @@ export class DespatchMailWeb extends WebPlugin {
     return { newUids };
   }
 
+  async searchServer({ account, path, criteria }) {
+    const folder = this.#folder(account, path);
+    const has = (haystack, needle) => (haystack ?? '').toLowerCase().includes(needle.toLowerCase());
+    const people = (list) => list.map((p) => `${p.name ?? ''} ${p.address}`).join(' ');
+    const matches = folder.messages.filter(
+      (m) =>
+        criteria.text.every((t) => has(m.subject, t) || has(people(m.from), t) || has(m.body.text ?? m.body.html, t)) &&
+        criteria.from.every((t) => has(people(m.from), t)) &&
+        criteria.to.every((t) => has(people([...m.to, ...m.cc]), t)) &&
+        criteria.subject.every((t) => has(m.subject, t)) &&
+        (criteria.unread == null || criteria.unread !== m.flags.includes('\\Seen')) &&
+        (criteria.flagged == null || criteria.flagged === m.flags.includes('\\Flagged')),
+    );
+    return { uids: matches.map((m) => m.uid).sort((a, b) => b - a) };
+  }
+
   async deleteMessages({ account, path, uids }) {
     const folder = this.#folder(account, path);
     folder.messages = folder.messages.filter((m) => !uids.includes(m.uid));

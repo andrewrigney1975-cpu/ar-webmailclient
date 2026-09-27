@@ -14,7 +14,7 @@ import { saveBody } from '../db/repo-messages.js';
 import { isTrustedSender, trustSender } from '../db/repo-senders.js';
 import { messageIdsInThreads, threadMessages, unreadIdsInThreads } from '../db/repo-threads.js';
 import { buildFrameDocument, prepareHtml, splitPlainText } from '../mail/html-content.js';
-import { UNIFIED_INBOX } from '../router.js';
+import { SEARCH, UNIFIED_INBOX } from '../router.js';
 import {
   displayName,
   formatAddressList,
@@ -51,8 +51,16 @@ export function createThreadView({
 
   const accountOf = (m) => store.get().accounts.find((a) => a.id === m.accountId);
   const folderOf = (m) => store.get().folders.find((f) => f.id === m.folderId);
-  const scope = () =>
-    route.folderId === UNIFIED_INBOX ? { unified: true } : { folderId: Number(route.folderId) };
+  function scope() {
+    if (route.folderId === UNIFIED_INBOX) return { unified: true };
+    if (route.folderId === SEARCH) {
+      // From search results: act on the conversation where its newest received message is.
+      const outgoing = new Set(['sent', 'drafts']);
+      const received = state.messages.filter((m) => !outgoing.has(folderOf(m)?.role));
+      return { folderId: (received.at(-1) ?? state.messages.at(-1)).folderId };
+    }
+    return { folderId: Number(route.folderId) };
+  }
   const viewingRole = () => store.get().folders.find((f) => String(f.id) === route.folderId)?.role ?? null;
   const isMe = (person) => store.get().accounts.some((a) => a.email === person?.address?.toLowerCase());
 
@@ -108,7 +116,8 @@ export function createThreadView({
     try {
       const body = await mail.fetchBody(account, folder.path, message.uid);
       const text = body.text ?? (body.html ? htmlToText(body.html) : '');
-      await saveBody(db, id, { text: body.text, html: body.html, snippet: snippetOf(text), attachments: body.attachments });
+      // body_text doubles as the search index text, so HTML-only mail stores its text too.
+      await saveBody(db, id, { text, html: body.html, snippet: snippetOf(text), attachments: body.attachments });
       if (token !== loadId) return;
       message.snippet = snippetOf(text);
       state.bodies.set(id, { body });
