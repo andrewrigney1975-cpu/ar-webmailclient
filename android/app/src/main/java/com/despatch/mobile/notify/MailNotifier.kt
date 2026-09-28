@@ -1,5 +1,6 @@
 package com.despatch.mobile.notify
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -42,7 +43,7 @@ class MailNotifier(private val context: Context) {
     fun notifyNewMail(account: BackgroundAccount, envelopes: List<Envelope>) {
         if (envelopes.isEmpty() || !manager.areNotificationsEnabled()) return
         val channel = ensureChannel(account)
-        val group = "mail.${account.account.id}"
+        val group = "$GROUP_PREFIX${account.account.id}"
 
         for (envelope in envelopes) {
             val sender = envelope.from.firstOrNull()?.let { it.name ?: it.address } ?: "Unknown sender"
@@ -57,7 +58,10 @@ class MailNotifier(private val context: Context) {
                 .setCategory(NotificationCompat.CATEGORY_EMAIL)
                 .setGroup(group)
                 .setAutoCancel(true)
+                // Re-posted when the badge count moves (updateBadge); only the first post should sound.
+                .setOnlyAlertOnce(true)
                 .setContentIntent(openIntent(account, envelope.uid, id, MainActivity.ACTION_OPEN_MESSAGE))
+                .setDeleteIntent(actionIntent(account, envelope.uid, id, NotificationActionReceiver.DISMISSED))
                 .addAction(0, "Mark read", actionIntent(account, envelope.uid, id, NotificationActionReceiver.MARK_READ))
             account.accentColor?.let { builder.setColor(it) }
             if (account.archivePath != null) {
@@ -86,10 +90,32 @@ class MailNotifier(private val context: Context) {
 
     fun cancel(accountId: String, uid: Long) = manager.cancel(notificationId(accountId, uid))
 
+    /**
+     * The app icon badge. Launchers show a dot while new-mail notifications are
+     * posted, and count them by adding up each one's number (at least 1 each,
+     * group summaries left out). So the newest carries the remainder and the
+     * rest carry none, making the total the Inbox unread count.
+     */
+    fun updateBadge(unread: Int) {
+        val posted = context.getSystemService(NotificationManager::class.java).activeNotifications
+            .filter {
+                it.notification.group?.startsWith(GROUP_PREFIX) == true &&
+                    it.notification.flags and Notification.FLAG_GROUP_SUMMARY == 0
+            }
+            .sortedBy { it.notification.`when` }
+        posted.forEachIndexed { index, sbn ->
+            val number = if (index == posted.lastIndex) (unread - index).coerceAtLeast(1) else 0
+            if (sbn.notification.number != number) {
+                val rebuilt = Notification.Builder.recoverBuilder(context, sbn.notification).setNumber(number).build()
+                manager.notify(sbn.tag, sbn.id, rebuilt)
+            }
+        }
+    }
+
     /** Clears an account's notifications, e.g. when the app shows its inbox. */
     fun cancelAccount(accountId: String) {
         val system = context.getSystemService(NotificationManager::class.java)
-        val group = "mail.$accountId"
+        val group = "$GROUP_PREFIX$accountId"
         system.activeNotifications.filter { it.notification.group == group }.forEach { manager.cancel(it.id) }
     }
 
@@ -124,6 +150,7 @@ class MailNotifier(private val context: Context) {
 
     companion object {
         const val CHANNEL_PREFIX = "mail."
+        const val GROUP_PREFIX = "mail."
         const val EXTRA_ACCOUNT = "despatch.accountId"
         const val EXTRA_PATH = "despatch.path"
         const val EXTRA_UID = "despatch.uid"

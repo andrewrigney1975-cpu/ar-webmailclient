@@ -90,6 +90,8 @@ export function createMailApi(plugin) {
 
     configureBackgroundSync: (config) => call('configureBackgroundSync', config),
     markNotified: ({ accountId, uidValidity, uid }) => call('markNotified', { accountId, uidValidity, uid }),
+    /** Inbox unread count per account ({ [accountId]: n }), for the app icon badge. */
+    setUnreadCounts: (counts) => call('setUnreadCounts', { counts }),
     /** { permission: 'granted' | 'denied' | 'prompt' | …, enabled } */
     notificationStatus: () => call('notificationStatus', {}),
     openNotificationSettings: () => call('openNotificationSettings', {}),

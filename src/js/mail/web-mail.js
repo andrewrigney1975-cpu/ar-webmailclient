@@ -161,6 +161,8 @@ export class DespatchMailWeb extends WebPlugin {
 
   async markNotified() {}
 
+  async setUnreadCounts() {}
+
   async notificationStatus() {
     return { permission: 'denied', enabled: false };
   }

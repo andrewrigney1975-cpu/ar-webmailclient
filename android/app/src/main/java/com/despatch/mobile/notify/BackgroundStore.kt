@@ -80,6 +80,16 @@ class BackgroundStore(context: Context) : NewMailChecker.State {
 
     fun account(id: String) = accounts.firstOrNull { it.account.id == id }
 
+    /** Inbox unread counts per account, from background checks and from the app. */
+    override fun setUnread(accountId: String, unseen: Int) {
+        prefs.edit().putInt("unread.$accountId", unseen.coerceAtLeast(0)).apply()
+    }
+
+    fun unread(accountId: String): Int = prefs.getInt("unread.$accountId", 0)
+
+    /** What the app icon badge counts: unread in the Inbox of each account with notifications on. */
+    val badgeCount: Int get() = accounts.filter { it.notify }.sumOf { unread(it.account.id) }
+
     override fun position(accountId: String): NewMailChecker.Position? {
         val saved = prefs.getString("position.$accountId", null) ?: return null
         val (validity, uid) = saved.split(':').map { it.toLong() }

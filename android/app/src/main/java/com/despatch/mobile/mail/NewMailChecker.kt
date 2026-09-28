@@ -14,6 +14,9 @@ class NewMailChecker(private val imap: ImapService, private val state: State) {
     interface State {
         fun position(accountId: String): Position?
         fun setPosition(accountId: String, position: Position)
+
+        /** The Inbox's unread count from the same STATUS, for the app icon badge. */
+        fun setUnread(accountId: String, unseen: Int) {}
     }
 
     /** New unread messages in [inboxPath], oldest first. */
@@ -21,6 +24,7 @@ class NewMailChecker(private val imap: ImapService, private val state: State) {
         val status = imap.folderStatus(account, inboxPath)
         val saved = state.position(account.id)
         val newest = status.uidNext - 1
+        state.setUnread(account.id, status.unseen)
 
         if (saved == null || saved.uidValidity != status.uidValidity) {
             state.setPosition(account.id, Position(status.uidValidity, newest))
