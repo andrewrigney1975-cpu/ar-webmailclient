@@ -51,6 +51,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 }
             } finally {
                 imap.disconnectAll()
+                notifier.updateBadge(store.badgeCount)
                 store.recordCheck(trigger, found, errors.joinToString("; ").ifEmpty { null })
             }
         }

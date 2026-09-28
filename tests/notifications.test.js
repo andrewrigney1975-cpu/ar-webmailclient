@@ -16,12 +16,13 @@ async function fixture() {
   const store = createStore({ accounts: [account], folders: await listFolders(fx.db), settings: { ...DEFAULT_SETTINGS } });
   const router = { navigate: vi.fn() };
   const syncManager = { syncFolderIfStale: vi.fn(async () => {}) };
-  const calls = { configure: [], marked: [] };
+  const calls = { configure: [], marked: [], unread: [] };
   let tapped = null;
   const mail = {
     ...fx.mail,
     configureBackgroundSync: vi.fn(async (config) => calls.configure.push(config)),
     markNotified: vi.fn(async (args) => calls.marked.push(args)),
+    setUnreadCounts: vi.fn(async (counts) => calls.unread.push(counts)),
     addNotificationListener: vi.fn(async (callback) => {
       tapped = callback;
     }),
@@ -72,6 +73,22 @@ describe('notifications controller', () => {
     fx.store.set({ folders: [...fx.store.get().folders] });
     await settle();
     expect(fx.calls.marked).toEqual([{ accountId: fx.account.id, uidValidity: 1, uid: 5 }]);
+  });
+
+  it('passes Inbox unread counts on for the app icon badge, only when they change', async () => {
+    const fx = await fixture();
+    await fx.notifications.start();
+    const inbox = fx.store.get().folders.find((f) => f.role === 'inbox');
+    expect(inbox.unreadCount).toBeGreaterThan(0);
+    expect(fx.calls.unread).toEqual([{ [fx.account.id]: inbox.unreadCount }]);
+
+    fx.store.set({ folders: [...fx.store.get().folders] });
+    await settle();
+    expect(fx.calls.unread).toHaveLength(1);
+
+    fx.store.set({ folders: fx.store.get().folders.map((f) => (f.role === 'inbox' ? { ...f, unreadCount: 0 } : f)) });
+    await settle();
+    expect(fx.calls.unread.at(-1)).toEqual({ [fx.account.id]: 0 });
   });
 
   it('opens the conversation, or a reply, for a tapped notification', async () => {

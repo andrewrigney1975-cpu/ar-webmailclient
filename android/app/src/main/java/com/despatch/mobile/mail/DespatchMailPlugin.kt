@@ -342,6 +342,16 @@ class DespatchMailPlugin : Plugin() {
         null
     }
 
+    /** Inbox unread counts from the app ({ counts: { accountId: n } }), for the app icon badge. */
+    @PluginMethod
+    fun setUnreadCounts(call: PluginCall) = run(call) {
+        val store = BackgroundStore(context)
+        val counts = call.getObject("counts") ?: JSObject()
+        counts.keys().forEach { store.setUnread(it, counts.getInt(it)) }
+        MailNotifier(context).updateBadge(store.badgeCount)
+        null
+    }
+
     /**
      * Notification permission, whether Android restricts background work for the
      * app (battery optimisation), and the last background check.

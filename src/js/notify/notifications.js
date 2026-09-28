@@ -4,6 +4,7 @@
  *   - keeps the native side's account list and schedule in step with the app
  *   - after each sync, tells it the inbox has been seen, so mail already shown
  *     in the app isn't notified and stale notifications clear
+ *   - passes each Inbox's unread count on for the app icon badge
  *   - opens the right conversation (or a reply) when a notification is tapped
  *   - asks for the notification permission once, after the first account
  */
@@ -32,7 +33,19 @@ export function backgroundConfig({ accounts, folders, settings }) {
 
 export function createNotifications({ db, mail, store, router, syncManager, onError = () => {} }) {
   let lastConfig = null;
+  let lastCounts = null;
   const lastMarked = new Map();
+
+  /** Inbox unread per account; native sums the accounts with notifications on. */
+  async function sendUnreadCounts() {
+    const counts = Object.fromEntries(
+      store.get().folders.filter((f) => f.role === 'inbox').map((f) => [f.accountId, f.unreadCount ?? 0]),
+    );
+    const json = JSON.stringify(counts);
+    if (json === lastCounts) return;
+    lastCounts = json;
+    await mail.setUnreadCounts(counts).catch(() => {});
+  }
 
   async function configure() {
     const config = backgroundConfig(store.get());
@@ -83,9 +96,13 @@ export function createNotifications({ db, mail, store, router, syncManager, onEr
         if (state.accounts !== previous.accounts || state.folders !== previous.folders || state.settings !== previous.settings) {
           configure();
         }
-        if (state.folders !== previous.folders) markInboxesSeen();
+        if (state.folders !== previous.folders) {
+          markInboxesSeen();
+          sendUnreadCounts();
+        }
       });
       await configure();
+      await sendUnreadCounts();
     },
 
     /** Asks once, after the first account is added (Android 13+ needs the runtime permission). */
