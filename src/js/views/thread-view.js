@@ -12,11 +12,13 @@ import { Capacitor } from '@capacitor/core';
 import { html, icon, render } from '../html.js';
 import { saveBody } from '../db/repo-messages.js';
 import { isTrustedSender, trustSender } from '../db/repo-senders.js';
+import { blockFor, domainOf } from '../mail/blocking.js';
 import { messageIdsInThreads, threadMessages, unreadIdsInThreads } from '../db/repo-threads.js';
 import { buildFrameDocument, prepareHtml, splitPlainText } from '../mail/html-content.js';
 import { SEARCH, UNIFIED_INBOX } from '../router.js';
 import { dismissSuggestion, eventFromSuggestion, exportEvent, suggestionsFor } from '../calendar/calendar.js';
 import { editEvent } from './components/event-editor.js';
+import { chooseFromSheet } from './components/overlays.js';
 import {
   displayName,
   formatAddressList,
@@ -44,6 +46,7 @@ export function createThreadView({
   onCompose,
   openExternal,
   dialogs,
+  blocking,
   router,
 }) {
   let route = null;
@@ -227,6 +230,9 @@ export function createThreadView({
                 ? html`<button class="text-button" type="button" data-card="replyall">${icon('reply-all')} Reply all</button>`
                 : ''}
               <button class="text-button" type="button" data-card="forward">${icon('forward')} Forward</button>
+              ${message.from && !isMe(message.from)
+                ? html`<button class="text-button" type="button" data-card="block">${icon('block')} ${blockFor(message.from.address, store.get().blocked) ? 'Unblock' : 'Block'}</button>`
+                : ''}
             `}
       </div>
       <div class="banner banner--info message__remote" data-part="remote" hidden>
@@ -499,6 +505,33 @@ export function createThreadView({
     }
   }
 
+  /** Block sender / Block sender's domain, or Unblock if either already covers this sender. */
+  async function blockOrUnblock(message) {
+    const address = message.from.address.toLowerCase();
+    const existing = blockFor(address, store.get().blocked);
+    if (existing) {
+      await blocking.unblock(existing.kind, existing.value);
+      snackbar.show(`Unblocked ${existing.kind === 'domain' ? existing.value : address}`);
+      drawCard(message.id);
+      return;
+    }
+    const domain = domainOf(address);
+    const choice = await chooseFromSheet(router, {
+      title: `Block ${displayName(message.from)}?`,
+      items: [
+        { value: { kind: 'address', value: address }, label: `Block sender (${address})`, icon: 'block' },
+        ...(domain ? [{ value: { kind: 'domain', value: domain }, label: `Block sender’s domain (anyone at ${domain})`, icon: 'block' }] : []),
+      ],
+    });
+    if (!choice) return;
+    const moved = await blocking.block(choice.kind, choice.value);
+    snackbar.show(
+      `Blocked ${choice.value}. ${moved ? `${moved} ${moved === 1 ? 'message' : 'messages'} moved to Trash; new` : 'New'} mail goes straight to Trash.`,
+    );
+    if (moved && !state?.messages.some((m) => !blockFor(m.from?.address, store.get().blocked))) onClose();
+    else if (state) drawCard(message.id);
+  }
+
   async function cardAction(action, message, button) {
     switch (action) {
       case 'add-event':
@@ -532,6 +565,9 @@ export function createThreadView({
         break;
       case 'edit-draft':
         onCompose({ name: 'compose', mode: 'draft', id: `msg:${message.id}` });
+        break;
+      case 'block':
+        await blockOrUnblock(message).catch(onError);
         break;
       case 'trust-sender':
         await trustSender(db, message.from.address);

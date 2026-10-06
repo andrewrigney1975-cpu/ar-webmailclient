@@ -1,6 +1,6 @@
 {
   "name": "dispatch-mobile",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Dispatch Mobile: a native Android IMAP email client built with vanilla web technologies and Capacitor.",
   "type": "module",

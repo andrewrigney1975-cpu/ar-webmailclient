@@ -161,6 +161,10 @@ export class DespatchMailWeb extends WebPlugin {
 
   async markNotified() {}
 
+  async takePrefetched() {
+    return { messages: [] };
+  }
+
   async setUnreadCounts() {}
 
   async notificationStatus() {

@@ -2,9 +2,11 @@ package com.despatch.mobile.notify
 
 import android.content.Context
 import com.despatch.mobile.mail.AccountConfig
+import com.despatch.mobile.mail.BlockList
 import com.despatch.mobile.mail.NewMailChecker
 import com.despatch.mobile.mail.accountFromJson
 import org.json.JSONArray
+import org.json.JSONObject
 
 /** One account as background checking needs it. The password stays in the CredentialStore. */
 data class BackgroundAccount(
@@ -12,14 +14,15 @@ data class BackgroundAccount(
     val notify: Boolean,
     val inboxPath: String,
     val archivePath: String?,
+    val trashPath: String?,
     val accentColor: Int?,
     val label: String,
 )
 
 /**
  * What the app hands to background work (PLAN.md §4.4): the accounts to
- * check, how often, and whether instant ("push") mode is on, plus each
- * account's last notified UID. Stored in SharedPreferences, so background
+ * check, how often, whether instant ("push") mode is on and who is blocked,
+ * plus each account's last notified UID. Stored in SharedPreferences, so background
  * work never needs the app's encrypted database.
  */
 class BackgroundStore(context: Context) : NewMailChecker.State {
@@ -37,6 +40,18 @@ class BackgroundStore(context: Context) : NewMailChecker.State {
     var scheduledIntervalMinutes: Int
         get() = prefs.getInt("scheduledIntervalMinutes", 0)
         set(value) = prefs.edit().putInt("scheduledIntervalMinutes", value).apply()
+
+    /** { addresses: [..], domains: [..] }: senders whose new mail goes straight to Trash. */
+    var blockedJson: String
+        get() = prefs.getString("blocked", "{}") ?: "{}"
+        set(value) = prefs.edit().putString("blocked", value).apply()
+
+    val blockList: BlockList
+        get() {
+            val json = JSONObject(blockedJson)
+            fun strings(name: String) = json.optJSONArray(name)?.let { array -> List(array.length()) { array.optString(it) } } ?: emptyList()
+            return BlockList.of(strings("addresses"), strings("domains"))
+        }
 
     var push: Boolean
         get() = prefs.getBoolean("push", false)
@@ -71,6 +86,7 @@ class BackgroundStore(context: Context) : NewMailChecker.State {
                     notify = item.optBoolean("notify", true),
                     inboxPath = item.optString("inboxPath", "INBOX"),
                     archivePath = item.optString("archivePath").ifBlank { null },
+                    trashPath = item.optString("trashPath").ifBlank { null },
                     accentColor = item.optString("accentColor").takeIf { it.matches(Regex("#[0-9a-fA-F]{6}")) }
                         ?.let { android.graphics.Color.parseColor(it) },
                     label = account.displayName?.takeIf { it.isNotBlank() } ?: account.email,

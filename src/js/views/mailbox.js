@@ -144,7 +144,9 @@ export function createMailboxView({
   function participants(row) {
     const people = row.thread?.participants ?? [];
     if (people.length === 0) return displayName(row.from);
-    const names = people.map((p) => (isMe(p) ? 'me' : displayName(p).split(/[\s@]/)[0]));
+    // Full names while they fit ("The Cheesecake Shop", not "The"); first names only for busier threads.
+    const short = people.length > 2;
+    const names = people.map((p) => (isMe(p) ? 'me' : short ? displayName(p).split(/[\s@]/)[0] : displayName(p)));
     return names.length > 3 ? `${names[0]} … ${names.slice(-2).join(', ')}` : names.join(', ');
   }
 

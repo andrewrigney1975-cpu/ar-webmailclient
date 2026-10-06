@@ -31,7 +31,7 @@ function notificationSummary(status) {
   return 'Blocked in Android settings';
 }
 
-export function renderSettings(element, { accounts, sync, confirmRemoveId, settings, notificationStatus }) {
+export function renderSettings(element, { accounts, sync, confirmRemoveId, settings, notificationStatus, blocked = [] }) {
   const allowed = notificationStatus?.permission === 'granted' && notificationStatus?.enabled;
   const askable = notificationStatus?.permission === 'prompt' || notificationStatus?.permission === 'prompt-with-rationale';
   render(
@@ -142,6 +142,21 @@ export function renderSettings(element, { accounts, sync, confirmRemoveId, setti
           <input class="switch" type="checkbox" role="switch" data-action="toggle-setting" data-setting="darkMessages"
             ${settings.darkMessages ? 'checked' : ''} />
         </label>
+        </div>
+
+        <h2 class="settings__heading">Blocked senders</h2>
+        <div class="settings-group">
+        ${blocked.length === 0
+          ? html`<p class="settings__note">Nobody is blocked. To block a sender or their domain, open one of their messages and choose Block.</p>`
+          : blocked.map(
+              (b) => html`<div class="switch-row">
+                <span>
+                  <span class="switch-row__label">${b.kind === 'domain' ? `Anyone at ${b.value}` : b.value}</span>
+                  <span class="switch-row__detail">${b.kind === 'domain' ? 'Domain' : 'Sender'} · new mail goes straight to Trash</span>
+                </span>
+                <button class="text-button" type="button" data-action="unblock" data-kind="${b.kind}" data-value="${b.value}">Unblock</button>
+              </div>`,
+            )}
         </div>
       </div>
     `,

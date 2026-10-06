@@ -36,6 +36,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     MARK_READ -> imap.setFlags(account.account, account.inboxPath, listOf(uid), listOf("\\Seen"), emptyList())
                     ARCHIVE -> account.archivePath?.let {
                         imap.moveMessages(account.account, account.inboxPath, listOf(uid), it)
+                        // Its prefetched copy would otherwise appear in the app's Inbox.
+                        PrefetchStore.forAndroid(context).remove(accountId, account.inboxPath, uid)
                     }
                 }
                 notifier.cancel(accountId, uid)

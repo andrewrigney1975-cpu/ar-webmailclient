@@ -8,7 +8,8 @@ Dispatch Mobile is an email app. It connects to the email accounts you add and t
 
 Everything stays on your device.
 
-- **Your mail:** message headers, the bodies you open, and attachments you download. Stored in an encrypted database (SQLCipher) in the app's private storage.
+- **Your mail:** message headers, the bodies you open, and attachments you download. Stored in an encrypted database (SQLCipher) in the app's private storage. Messages fetched in the background for a notification are kept encrypted (with a key held in the Android Keystore) in the app's private storage until the app next opens and moves them into its database.
+- **Blocked senders:** the addresses and domains you block, in the same encrypted database and in the app's private settings for background checks.
 - **Your account settings:** server names, usernames, your display name, signature and colour choices.
 - **Your passwords:** encrypted with a key held in the Android Keystore. They never leave the device except when sent to your own mail server to sign in.
 - **Contacts:** names and addresses seen in your mail, used only to suggest recipients as you type.

@@ -124,3 +124,23 @@ class MessageIdTest {
         )
     }
 }
+
+class BlockListTest {
+    private val list = BlockList.of(listOf("Spam@Example.org"), listOf("@cheesecake.com.au"))
+
+    @Test
+    fun blocksAddressesIgnoringCase() {
+        assertTrue(list.blocks("spam@example.org"))
+        assertTrue(list.blocks(" SPAM@example.org "))
+        assertFalse(list.blocks("friend@example.org"))
+        assertFalse(list.blocks(null))
+    }
+
+    @Test
+    fun blocksDomainsAndTheirSubdomains() {
+        assertTrue(list.blocks("offers@cheesecake.com.au"))
+        assertTrue(list.blocks("news@mail.cheesecake.com.au"))
+        assertFalse(list.blocks("someone@notcheesecake.com.au"))
+        assertFalse(BlockList.EMPTY.blocks("offers@cheesecake.com.au"))
+    }
+}

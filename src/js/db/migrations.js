@@ -200,6 +200,18 @@ export const MIGRATIONS = [
       CREATE INDEX messages_folder_thread_received ON messages (folder_id, thread_id, date_received);
     `,
   },
+  {
+    version: 8,
+    sql: `
+      -- Senders and domains whose mail goes straight to Trash (blocking.js).
+      CREATE TABLE blocked_senders (
+        kind TEXT NOT NULL CHECK (kind IN ('address', 'domain')),
+        value TEXT NOT NULL COLLATE NOCASE,
+        added_at INTEGER NOT NULL,
+        PRIMARY KEY (kind, value)
+      );
+    `,
+  },
 ];
 
 export async function migrate(db, migrations = MIGRATIONS) {

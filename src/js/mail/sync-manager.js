@@ -14,7 +14,8 @@ import { AUTO_SYNC_ROLES, syncFolder, syncFolderList } from './sync.js';
 export const FOREGROUND_INTERVAL_MS = 5 * 60_000;
 export const FOLDER_STALE_MS = 2 * 60_000;
 
-export function createSyncManager({ db, mail, store }) {
+/** `onSynced(account)` runs after a sync that changed cached mail (blocking.js moves blocked senders' mail). */
+export function createSyncManager({ db, mail, store, onSynced = async () => {} }) {
   const running = new Map();
   let timer = null;
 
@@ -43,7 +44,10 @@ export function createSyncManager({ db, mail, store }) {
         changed ||= result.added.length > 0 || result.removed.length > 0 || result.reset || !result.unchanged;
       }
       await reloadFolders();
-      if (changed) bumpDataVersion();
+      if (changed) {
+        bumpDataVersion();
+        await onSynced(account);
+      }
       setAccountState(account.id, { state: 'idle', error: null, lastSyncedAt: Date.now() });
     } catch (error) {
       setAccountState(account.id, { state: 'error', error: { code: error.code, message: error.message } });

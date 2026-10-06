@@ -25,6 +25,7 @@ import { createAccountSetupView } from './views/account-setup.js';
 import { createComposeView } from './views/compose.js';
 import { createAccountSettingsView } from './views/account-settings.js';
 import { createNotifications } from './notify/notifications.js';
+import { createBlocking } from './mail/blocking.js';
 import { chooseFromSheet, confirmDialog, createSnackbar } from './views/components/overlays.js';
 
 const app = document.getElementById('app');
@@ -52,11 +53,13 @@ const store = createStore({
   settings: await loadSettings(),
   listPrefs: await loadListPrefs(),
   outbox: [],
+  blocked: [],
 });
 
 const db = await openDatabase();
-const syncManager = createSyncManager({ db, mail, store });
+const syncManager = createSyncManager({ db, mail, store, onSynced: () => blocking.enforce() });
 const actions = createMessageActions({ db, mail, store });
+const blocking = createBlocking({ db, store, actions, onError: (e) => console.warn(e) });
 const snackbar = createSnackbar(document.getElementById('snackbar'));
 const outbox = createOutbox({ db, mail, store });
 
@@ -154,6 +157,7 @@ const threadView = createThreadView({
   onCompose: (route) => router.navigate(route),
   router,
   dialogs: { pickFolder, confirmDeleteForever },
+  blocking,
   onClose: () => {
     const route = store.get().lastMailboxRoute;
     if (route?.threadId) router.navigate({ ...route, threadId: null }, { replace: true });
@@ -316,6 +320,9 @@ document.addEventListener('click', (event) => {
     case 'battery-settings':
       notifications.openBatterySettings().catch(showError);
       break;
+    case 'unblock':
+      blocking.unblock(target.dataset.kind, target.dataset.value).catch(showError);
+      break;
     case 'check-now':
       target.disabled = true;
       notifications
@@ -444,11 +451,13 @@ watchColorScheme({ store });
 watchWidthClass({ root: app, store });
 applyListWidth();
 await loadAccounts();
+await blocking.load();
 router.start();
 await initPlatform({
   router,
   store,
   onResume: () => {
+    notifications.importPrefetched();
     syncManager.syncAll();
     outbox.process();
     refreshNotificationStatus();

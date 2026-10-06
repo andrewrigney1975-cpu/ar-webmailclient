@@ -21,6 +21,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.despatch.mobile.MainActivity
 import com.despatch.mobile.notify.BackgroundStore
 import com.despatch.mobile.notify.MailNotifier
+import com.despatch.mobile.notify.PrefetchStore
 import com.despatch.mobile.notify.PushService
 import com.despatch.mobile.notify.SyncWorker
 import org.json.JSONArray
@@ -312,12 +313,14 @@ class DespatchMailPlugin : Plugin() {
     /**
      * Hands the background checker (PLAN.md §4.4) the accounts to watch and
      * schedules it; starts or stops instant (IDLE) mode.
-     * accounts: [{ account, notify, inboxPath, archivePath, accentColor }]
+     * accounts: [{ account, notify, inboxPath, archivePath, trashPath, accentColor }],
+     * blocked: { addresses, domains }
      */
     @PluginMethod
     fun configureBackgroundSync(call: PluginCall) = run(call) {
         val store = BackgroundStore(context)
         store.accountsJson = (call.getArray("accounts") ?: JSONArray()).toString()
+        store.blockedJson = (call.getObject("blocked") ?: JSObject()).toString()
         store.intervalMinutes = call.getInt("intervalMinutes") ?: 15
         store.push = call.getBoolean("push") ?: false
 
@@ -340,6 +343,17 @@ class DespatchMailPlugin : Plugin() {
         NewMailChecker(imap, store).markSeen(accountId, call.requireLong("uidValidity"), call.requireLong("uid"))
         MailNotifier(context).cancelAccount(accountId)
         null
+    }
+
+    /**
+     * Messages the background check fetched in full for notifications
+     * ({ messages: [{ accountId, path, uidValidity, envelope, body }] }).
+     * Each is handed over once.
+     */
+    @PluginMethod
+    fun takePrefetched(call: PluginCall) = run(call) {
+        val records = PrefetchStore.forAndroid(context).takeAll()
+        JSObject().put("messages", JSArray().also { array -> records.forEach { array.put(JSObject(it)) } })
     }
 
     /** Inbox unread counts from the app ({ counts: { accountId: n } }), for the app icon badge. */

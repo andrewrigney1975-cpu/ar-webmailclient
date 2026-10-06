@@ -5,8 +5,10 @@
  *   1. STATUS. If UIDVALIDITY changed, the cached UIDs are meaningless: start over.
  *   2. With CONDSTORE, an unchanged HIGHESTMODSEQ / UIDNEXT / count means nothing to do.
  *   3. First sync: fetch the newest INITIAL_SYNC_COUNT envelopes.
- *      Later syncs: fetch envelopes above the highest cached UID, then refresh
+ *      Later syncs: fetch envelopes above what the last sync reached, then refresh
  *      flags for the cached range; cached UIDs the server no longer has were expunged.
+ *      (Messages taken in from notifications can sit above that point, so the
+ *      highest cached UID alone would skip whatever arrived before them.)
  */
 import { replaceFolders, updateFolderSyncState } from '../db/repo-folders.js';
 import { clearFolder, deleteUids, knownUids, saveEnvelopes, updateFlags } from '../db/repo-messages.js';
@@ -41,20 +43,19 @@ export async function syncFolder({ db, mail, account, folder, now = Date.now() }
 
   if (!unchanged) {
     const highest = known.at(-1) ?? 0;
+    const syncedTo = folder.uidNext ? Math.min(folder.uidNext - 1, highest) : highest;
+    const knownSet = new Set(known);
+    const isNew = (e) => e.uid > syncedTo && !knownSet.has(e.uid);
     const missing = status.messages - known.length;
 
     if (status.messages === 0) {
       removed = known;
     } else if (known.length === 0 || missing > INITIAL_SYNC_COUNT) {
       // First sync, or so much is new that only the newest messages are worth fetching.
-      added = (await mail.fetchEnvelopes(account, folder.path, { latest: INITIAL_SYNC_COUNT })).filter(
-        (e) => e.uid > highest,
-      );
-    } else if (status.uidNext > highest + 1) {
-      // "highest+1:*" returns the newest message even when it is below the range, so filter.
-      added = (await mail.fetchEnvelopes(account, folder.path, { fromUid: highest + 1 })).filter(
-        (e) => e.uid > highest,
-      );
+      added = (await mail.fetchEnvelopes(account, folder.path, { latest: INITIAL_SYNC_COUNT })).filter(isNew);
+    } else if (status.uidNext > syncedTo + 1) {
+      // "n:*" returns the newest message even when it is below the range, so filter.
+      added = (await mail.fetchEnvelopes(account, folder.path, { fromUid: syncedTo + 1 })).filter(isNew);
     }
 
     if (known.length > 0 && status.messages > 0) {
