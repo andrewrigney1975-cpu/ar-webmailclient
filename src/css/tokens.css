@@ -28,7 +28,7 @@
   --accent-pressed: color-mix(in oklch, var(--accent) 14%, transparent);
 
   /* Type */
-  --font: system-ui, 'Roboto', 'Segoe UI', sans-serif;
+  --font: 'Google Sans', system-ui, 'Roboto', 'Segoe UI', sans-serif;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-md: 1rem;
