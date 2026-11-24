@@ -19,7 +19,7 @@ See [PLAN.md](PLAN.md) for the implementation plan and milestone status, and [st
   - Drafts saved to the server.
   - An outbox with a 5-second Undo that also works offline.
 - **Search:** full-text search with operators (`from:`, `has:attachment`, `is:unread`, `before:` …), a server-side search fallback, and per-folder sort and attachment filters.
-- **Notifications:** background checks with WorkManager, per-account channels, and Mark read, Archive and Reply actions. An optional instant mode keeps an IMAP IDLE connection open. Notified messages are fetched in full in the background, so tapping one opens it at once.
+- **Notifications:** background checks with WorkManager, per-account channels, and Mark read, Reply and Delete actions. An optional instant mode keeps an IMAP IDLE connection open. Notified messages are fetched in full in the background, so tapping one opens it at once.
 - **App icon badge:** the Inbox unread count.
 - **Calendar:** dates in emails (deadlines, meetings) offered as `.ics` events, to open in the calendar app, save or share.
 - **Layout:** one pane on phones and two or three on tablets and foldables, with a resizable divider, split along the hinge, and keyboard shortcuts.

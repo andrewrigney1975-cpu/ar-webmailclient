@@ -161,7 +161,7 @@ Indexes on `(folder_id, date_received)`, `(folder_id, date_sent)`, `(folder_id, 
   - It needs a persistent notification (an Android requirement).
   - It reconnects when the network changes, using `ConnectivityManager` callbacks.
 - **Channels:** one notification channel per account, so users can tune them in system settings. The account accent colour is used as the notification colour.
-- **Grouped notifications** (InboxStyle) show sender and subject. Actions are *Mark read*, *Archive* and *Reply*.
+- **Grouped notifications** (InboxStyle) show sender and subject. Actions are *Mark read*, *Reply* and *Delete* (moves to Trash).
 - The `POST_NOTIFICATIONS` runtime permission is requested during onboarding, after an in-app explanation screen. If it is denied, the app keeps working, and Settings shows a banner linking to the system notification settings.
 
 ### 4.5 System theme and per-account accent colour

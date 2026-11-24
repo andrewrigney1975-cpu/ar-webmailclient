@@ -31,7 +31,7 @@ Dispatch Mobile is a clean, fast email app for any IMAP account: your own domain
 **Made for Android.**
 - Follows your light or dark theme and Material You colours.
 - Swipe to archive or delete, with Undo.
-- New-mail notifications with Mark read, Archive and Reply.
+- New-mail notifications with Mark read, Reply and Delete.
 - Optional instant notifications.
 - Two panes on tablets and foldables.
 - Keyboard shortcuts when you use a keyboard.

@@ -15,7 +15,7 @@ import com.despatch.mobile.mail.Envelope
 /**
  * New-mail notifications (PLAN.md §4.4): a channel per account (so users can
  * tune each in system settings), coloured with the account accent, grouped
- * per account, with Mark read, Archive and Reply actions.
+ * per account, with Mark read, Reply and Delete actions.
  */
 class MailNotifier(private val context: Context) {
     private val manager = NotificationManagerCompat.from(context)
@@ -63,11 +63,12 @@ class MailNotifier(private val context: Context) {
                 .setContentIntent(openIntent(account, envelope.uid, id, MainActivity.ACTION_OPEN_MESSAGE))
                 .setDeleteIntent(actionIntent(account, envelope.uid, id, NotificationActionReceiver.DISMISSED))
                 .addAction(0, "Mark read", actionIntent(account, envelope.uid, id, NotificationActionReceiver.MARK_READ))
+                .addAction(0, "Reply", openIntent(account, envelope.uid, id + 1, MainActivity.ACTION_REPLY))
             account.accentColor?.let { builder.setColor(it) }
-            if (account.archivePath != null) {
-                builder.addAction(0, "Archive", actionIntent(account, envelope.uid, id, NotificationActionReceiver.ARCHIVE))
+            // Like Delete in the app, this moves the message to Trash, so it is only offered where there is one.
+            if (account.trashPath != null) {
+                builder.addAction(0, "Delete", actionIntent(account, envelope.uid, id, NotificationActionReceiver.DELETE))
             }
-            builder.addAction(0, "Reply", openIntent(account, envelope.uid, id + 1, MainActivity.ACTION_REPLY))
             manager.notify(id, builder.build())
         }
 

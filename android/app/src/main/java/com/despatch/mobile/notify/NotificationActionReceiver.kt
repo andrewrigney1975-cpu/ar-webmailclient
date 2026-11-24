@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Handles Mark read and Archive from a notification, straight on the server,
+ * Handles Mark read and Delete (move to Trash) from a notification, straight on the server,
  * and keeps the app icon badge in step when one is acted on or swiped away.
  */
 class NotificationActionReceiver : BroadcastReceiver() {
@@ -34,7 +34,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
             try {
                 when (intent.action) {
                     MARK_READ -> imap.setFlags(account.account, account.inboxPath, listOf(uid), listOf("\\Seen"), emptyList())
-                    ARCHIVE -> account.archivePath?.let {
+                    DELETE -> account.trashPath?.let {
                         imap.moveMessages(account.account, account.inboxPath, listOf(uid), it)
                         // Its prefetched copy would otherwise appear in the app's Inbox.
                         PrefetchStore.forAndroid(context).remove(accountId, account.inboxPath, uid)
@@ -57,7 +57,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     companion object {
         const val MARK_READ = "com.despatch.mobile.action.MARK_READ"
-        const val ARCHIVE = "com.despatch.mobile.action.ARCHIVE"
+        const val DELETE = "com.despatch.mobile.action.DELETE"
         const val DISMISSED = "com.despatch.mobile.action.DISMISSED"
     }
 }
