@@ -324,3 +324,10 @@ The four earlier questions are resolved; see the Decisions log (§0). No open qu
 - **Outlook.com / Microsoft 365 / Exchange Online OAuth2** for IMAP and SMTP, through the Microsoft identity platform.
 - **On-premises Exchange** (EWS or ActiveSync) is to be evaluated separately. It is a different protocol stack from IMAP.
 - **Token storage and refresh** in the Keystore, plugged into the `Authenticator` interface prepared in v1.
+
+---
+
+## 11. Backlog
+Ideas to schedule into a future milestone. Not yet planned in detail.
+
+- **Choose the notification actions.** Android shows at most three action buttons on a phone, and has no setting to choose which ones appear. Add a setting where the user ticks up to three of *Mark read*, *Archive*, *Delete* and *Reply*, in their chosen order, or none. Pass the choice to background work in the `BackgroundStore` config with the accounts and block list, and have `MailNotifier` add only those actions. Still leave out Archive or Delete for an account with no Archive or Trash folder. Options: one setting for all accounts or one per account; on the watch, show all actions even when the phone shows three, using `WearableExtender` actions. Today the phone shows *Mark read*, *Reply* and *Delete*.
